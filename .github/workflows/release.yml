@@ -5,9 +5,10 @@ on:
   workflow_call:
     inputs:
       image-name:
-        description: "Image name (e.g., rune, rune-operator)"
+        description: "Image name (e.g., rune, rune-operator). Required when build-container is true."
         type: string
-        required: true
+        required: false
+        default: ""
       registry-owner:
         description: "Registry owner/namespace"
         type: string
@@ -18,8 +19,23 @@ on:
         type: string
         required: false
         default: "./Dockerfile"
+      build-container:
+        description: "Build and publish a multi-arch container image"
+        type: boolean
+        required: false
+        default: true
       notify-charts:
         description: "Send repository_dispatch to rune-charts"
+        type: boolean
+        required: false
+        default: false
+      generate-sbom:
+        description: "Generate CycloneDX SBOM with Syft and attach to release"
+        type: boolean
+        required: false
+        default: false
+      slsa-attestation:
+        description: "Generate SLSA L3 build provenance attestation"
         type: boolean
         required: false
         default: false
@@ -31,6 +47,8 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
+  attestations: write
 
 jobs:
   verify-tag:
@@ -53,6 +71,7 @@ jobs:
   build-amd64:
     name: Build image (amd64)
     needs: [verify-tag]
+    if: inputs.build-container
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -78,6 +97,7 @@ jobs:
   build-arm64:
     name: Build image (arm64)
     needs: [verify-tag]
+    if: inputs.build-container
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -102,16 +122,27 @@ jobs:
 
   manifest-and-release:
     name: Create manifest + GitHub Release
-    needs: [build-amd64, build-arm64]
+    needs: [verify-tag, build-amd64, build-arm64]
+    if: >-
+      always() &&
+      needs.verify-tag.result == 'success' &&
+      (needs.build-amd64.result == 'success' || needs.build-amd64.result == 'skipped') &&
+      (needs.build-arm64.result == 'success' || needs.build-arm64.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+
+      - name: Docker login
+        if: inputs.build-container
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create multi-arch manifest
+        if: inputs.build-container
+        id: manifest
         run: |
           IMAGE="ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}"
           TAG="${{ github.ref_name }}"
@@ -120,13 +151,54 @@ jobs:
             --tag "${IMAGE}:latest" \
             "${IMAGE}:${TAG}-amd64" \
             "${IMAGE}:${TAG}-arm64"
+          DIGEST=$(docker buildx imagetools inspect \
+            "${IMAGE}:${TAG}" \
+            --format '{{.Manifest.Digest}}' 2>/dev/null \
+            | grep -oP 'sha256:[a-f0-9]+' | head -1)
+          if [ -z "$DIGEST" ]; then
+            DIGEST=$(docker buildx imagetools inspect \
+              "${IMAGE}:${TAG}" \
+              2>&1 | grep -oP 'Digest:\s+\Ksha256:[a-f0-9]+' | head -1)
+          fi
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Syft
+        if: inputs.generate-sbom && inputs.build-container
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM
+        if: inputs.generate-sbom && inputs.build-container
+        run: |
+          IMAGE="ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}"
+          syft "${IMAGE}:${{ github.ref_name }}-amd64" \
+            -o cyclonedx-json=sbom.cdx.json
+
+      - name: Attest build provenance — SLSA L3
+        if: inputs.slsa-attestation && inputs.build-container
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-name: ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
+          push-to-registry: true
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
             --generate-notes \
             --verify-tag
+
+      - name: Upload SBOM to release
+        if: inputs.generate-sbom && inputs.build-container
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" sbom.cdx.json \
+            --clobber
+
       - name: Notify rune-charts
         if: inputs.notify-charts
         env:

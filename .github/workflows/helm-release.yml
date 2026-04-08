@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Helm Release
+
+on:
+  workflow_call:
+    inputs:
+      charts-dir:
+        description: "Directory containing Helm chart subdirectories"
+        type: string
+        required: false
+        default: "charts"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package charts and create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on main
+        run: |
+          git fetch origin main
+          COMMIT_SHA=$(git rev-parse "${GITHUB_SHA}^{commit}" 2>/dev/null || echo "$GITHUB_SHA")
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" origin/main; then
+            echo "ERROR: Tagged commit is not reachable from origin/main." >&2
+            echo "Tags must only be pushed AFTER merging to main." >&2
+            exit 1
+          fi
+
+      - name: Install Helm
+        uses: azure/setup-helm@b9e51907a09c216f16ebe8536097933489208112 # v4.3.0
+
+      - name: Package charts
+        run: |
+          mkdir -p .release-packages
+          for chart in ${{ inputs.charts-dir }}/*/; do
+            helm package "$chart" --destination .release-packages
+          done
+          ls -lh .release-packages/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            --verify-tag \
+            .release-packages/*.tgz
