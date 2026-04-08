@@ -1,7 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 The Rune Authors
+#
+# Dependabot configuration for rune-ci itself.
+# Monitors third-party GitHub Actions used in reusable workflows and
+# composite actions, and proposes SHA-pinned version bumps.
+#
+# For consumer repos that depend on rune-ci, see:
+#   templates/caller-dependabot.yml
+
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+      day: "monday"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
