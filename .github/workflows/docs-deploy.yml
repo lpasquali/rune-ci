@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Docs Deploy
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version for MkDocs"
+        type: string
+        required: false
+        default: "3.14"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Configure Git
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Deploy versioned docs
+        run: |
+          VERSION=$(grep '^version:' docs/context/CURRENT_STATE.md | awk '{print $2}' || echo "latest")
+          mike deploy --push --update-aliases $VERSION latest
+          mike set-default latest
