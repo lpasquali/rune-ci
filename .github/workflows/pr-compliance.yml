@@ -34,7 +34,7 @@ jobs:
             });
             const body = pr.data.body || '';
             const errors = [];
-            if (!/[Cc]loses?\s+#\d+|[Ff]ixes?\s+#\d+|[Rr]esolves?\s+#\d+/.test(body)) {
+            if (!/[Cc]loses?\s+\S*#\d+|[Ff]ixes?\s+\S*#\d+|[Rr]esolves?\s+\S*#\d+/.test(body)) {
               errors.push('PR must reference an issue (Closes #NNN, Fixes #NNN, or Resolves #NNN)');
             }
             if (!/\[x\]\s+\*\*Level\s+[123]/.test(body)) {
