@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2025-2026 The Rune Authors
+#
+# Dependabot configuration template for RUNE consumer repos.
+#
+# Copy this file to .github/dependabot.yml in your consumer repo
+# (rune, rune-operator, rune-ui, rune-charts, rune-docs, rune-audit,
+# rune-airgapped) to receive automated version-bump PRs when rune-ci
+# publishes new tags.
+#
+# Dependabot tracks GitHub Actions references (uses: lpasquali/rune-ci/...@vX.Y.Z)
+# and opens PRs when newer tags are available.
+#
+# Adjust the schedule and limits to suit your repo's needs.
+
+version: 2
+updates:
+  # -- GitHub Actions (includes rune-ci reusable workflows and composite actions) --
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # -- pip (Python repos only -- remove if not applicable) --
+  # - package-ecosystem: "pip"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   open-pull-requests-limit: 10
+  #   commit-message:
+  #     prefix: "deps"
+
+  # -- gomod (Go repos only -- remove if not applicable) --
+  # - package-ecosystem: "gomod"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   open-pull-requests-limit: 10
+  #   commit-message:
+  #     prefix: "deps"
+
+  # -- docker (repos with Dockerfiles -- remove if not applicable) --
+  # - package-ecosystem: "docker"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   open-pull-requests-limit: 5
+  #   commit-message:
+  #     prefix: "deps"
