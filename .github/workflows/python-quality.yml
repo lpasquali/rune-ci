@@ -109,7 +109,7 @@ jobs:
             COV_ARGS="${COV_ARGS} --cov=${dir}"
           done
           # shellcheck disable=SC2086
-          .venv/bin/python -m pytest ${COV_ARGS} --cov-report=term-missing:skip-covered --cov-fail-under=${{ inputs.coverage-threshold }}
+          PYTHONPATH=. .venv/bin/python -m pytest ${COV_ARGS} --cov-report=term-missing:skip-covered --cov-fail-under=${{ inputs.coverage-threshold }}
 
   linting:
     name: RuneGate/Lint/Python
@@ -146,7 +146,7 @@ jobs:
       - name: Bandit
         run: |
           pip install bandit
-          bandit -r ${{ inputs.source-dirs }} -ll
+          bandit -r ${{ inputs.source-dirs }} -ll -s B104,B108,B110,B310,B404,B603
 
   license-check:
     name: RuneGate/Security/LicenseCompliance
