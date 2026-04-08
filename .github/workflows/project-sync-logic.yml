@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Project Sync Logic
+
+on:
+  workflow_call:
+    secrets:
+      PROJECT_TOKEN:
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync to Project
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const PROJECT_ID = "PVT_kwHOABsqts4BT6xG";
+            const STATUS_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBGX1s";
+            const AGENT_LANE_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBM-jU";
+            
+            const STATUS_OPTIONS = {
+              "Todo": "f75ad846",
+              "In progress": "47fc9ee4",
+              "Done": "98236657"
+            };
+            
+            const AGENT_OPTIONS = {
+              "gemini_cli": "5f149a49",
+              "claude_cli": "adb883c9",
+              "copilot_cli": "e38e173e"
+            };
+
+            const payload = context.payload;
+            const contentId = payload.issue ? payload.issue.node_id : payload.pull_request.node_id;
+            const labels = payload.issue ? payload.issue.labels : payload.pull_request.labels;
+            const labelNames = labels ? labels.map(l => l.name) : [];
+            
+            console.log(`Processing content: ${contentId}`);
+
+            // 1. Add item to project
+            const addResult = await github.graphql(`
+              mutation($project: ID!, $content: ID!) {
+                addProjectV2ItemById(input: {projectId: $project, contentId: $content}) {
+                  item { id }
+                }
+              }
+            `, { project: PROJECT_ID, content: contentId });
+
+            const itemId = addResult.addProjectV2ItemById.item.id;
+            console.log(`Project Item ID: ${itemId}`);
+
+            // 2. Determine Status
+            let targetStatus = "Todo";
+            if (payload.action === "closed" || payload.issue?.state === "closed" || payload.pull_request?.merged) {
+              targetStatus = "Done";
+            } else if (payload.issue?.assignees?.length > 0 || payload.pull_request || labelNames.some(l => l.endsWith('_cli'))) {
+              targetStatus = "In progress";
+            }
+            
+            if (labelNames.includes("status/todo") && targetStatus !== "Done") {
+              targetStatus = "Todo";
+            }
+
+            console.log(`Setting Status to: ${targetStatus}`);
+            await github.graphql(`
+              mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $project,
+                  itemId: $item,
+                  fieldId: $field,
+                  value: { singleSelectOptionId: $option }
+                }) { projectV2Item { id } }
+              }
+            `, {
+              project: PROJECT_ID,
+              item: itemId,
+              field: STATUS_FIELD_ID,
+              option: STATUS_OPTIONS[targetStatus]
+            });
+
+            // 3. Determine Agent Lane
+            let agentOption = null;
+            for (const [label, optionId] of Object.entries(AGENT_OPTIONS)) {
+              if (labelNames.includes(label)) {
+                agentOption = optionId;
+                break;
+              }
+            }
+
+            if (agentOption) {
+              console.log("Setting Agent Lane...");
+              await github.graphql(`
+                mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $project,
+                    itemId: $item,
+                    fieldId: $field,
+                    value: { singleSelectOptionId: $option }
+                  }) { projectV2Item { id } }
+                }
+              `, {
+                project: PROJECT_ID,
+                item: itemId,
+                field: AGENT_LANE_FIELD_ID,
+                option: agentOption
+              });
+            }
