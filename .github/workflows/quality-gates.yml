@@ -129,5 +129,12 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.issue.number,
               event: 'APPROVE',
-              body: '✅ **RuneGate Automated Approval**\n\nUnder IEC 62443-4-1 ML4 guidelines, this PR has been automatically approved because it deterministically passed all strict Quality Gates (Coverage > 97%, SAST, SCA, SBOM, and SLSA L3 provenance). This satisfies the objective two-person peer-review requirement.'
+              body: [
+                '✅ **RuneGate Automated Approval**\n\n',
+                'Under IEC 62443-4-1 ML4 guidelines, this PR has been ',
+                'automatically approved because it deterministically ',
+                'passed all strict Quality Gates (Coverage > 97%, SAST, ',
+                'SCA, SBOM, and SLSA L3 provenance). This satisfies the ',
+                'objective two-person peer-review requirement.',
+              ].join('')
             });

@@ -101,11 +101,14 @@ jobs:
           pip install --upgrade pip
           pip install --prefer-binary -r requirements.txt ${{ inputs.test-deps }}
       - name: Coverage
+        shell: bash
         run: |
           COV_ARGS=""
+          # shellcheck disable=SC2086
           for dir in ${{ inputs.source-dirs }}; do
             COV_ARGS="${COV_ARGS} --cov=${dir}"
           done
+          # shellcheck disable=SC2086
           .venv/bin/python -m pytest ${COV_ARGS} --cov-report=term-missing:skip-covered --cov-fail-under=${{ inputs.coverage-threshold }}
 
   linting:

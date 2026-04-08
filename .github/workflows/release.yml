@@ -213,4 +213,13 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${CROSS_REPO_TOKEN}" \
             https://api.github.com/repos/lpasquali/rune-charts/dispatches \
-            -d "{\"event_type\":\"image-published\",\"client_payload\":{\"source_repo\":\"${GITHUB_REPOSITORY}\",\"image_name\":\"ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}\",\"image_tag\":\"${{ github.ref_name }}\"}}"
+            -d @- <<DISPATCH_JSON
+          {
+            "event_type": "image-published",
+            "client_payload": {
+              "source_repo": "${GITHUB_REPOSITORY}",
+              "image_name": "ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}",
+              "image_tag": "${{ github.ref_name }}"
+            }
+          }
+          DISPATCH_JSON

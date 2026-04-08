@@ -12,4 +12,3 @@ jobs:
     uses: lpasquali/rune-ci/.github/workflows/project-sync.yml@v0.1.0
     secrets:
       PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-
