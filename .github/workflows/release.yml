@@ -176,7 +176,7 @@ jobs:
 
       - name: Attest build provenance — SLSA L3
         if: inputs.slsa-attestation && inputs.build-container
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-name: ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}
           subject-digest: ${{ steps.manifest.outputs.digest }}
