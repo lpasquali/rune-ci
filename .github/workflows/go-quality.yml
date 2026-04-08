@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Go Quality
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version"
+        type: string
+        required: false
+        default: "1.25"
+      coverage-threshold:
+        description: "Minimum coverage percentage"
+        type: string
+        required: false
+        default: "99.5"
+      path-filter:
+        description: "Regex for path change detection"
+        type: string
+        required: false
+        default: '^(go\.(mod|sum)|.*\.go)$'
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.diff.outputs.go }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Compute changed paths
+        id: diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" 2>/dev/null || echo ".")
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              CHANGED="."
+            else
+              CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" 2>/dev/null || echo ".")
+            fi
+          fi
+          if printf '%s\n' "$CHANGED" | grep -qE '${{ inputs.path-filter }}'; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  coverage:
+    name: RuneGate/Coverage/Go
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v6
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: Run tests with coverage
+        run: |
+          set -euo pipefail
+          go test ./... -coverprofile=coverage.out -covermode=atomic -count=1 -v 2>&1 | tee test-output.txt
+          TOTAL=$(go tool cover -func=coverage.out | grep ^total: | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: ${TOTAL}%"
+          THRESHOLD="${{ inputs.coverage-threshold }}"
+          if [ "$(echo "${TOTAL} < ${THRESHOLD}" | bc -l)" -eq 1 ]; then
+            echo "Coverage ${TOTAL}% is below threshold ${THRESHOLD}%"
+            exit 1
+          fi
+
+  format:
+    name: RuneGate/Lint/GoFmt
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v6
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Go vet
+        run: go vet ./...
+
+  sast:
+    name: RuneGate/Security/SAST-Go
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v6
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: GoSec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -fmt json -severity high ./...
+
+  license-check:
+    name: RuneGate/Security/LicenseCompliance-Go
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v6
+        with:
+          go-version: ${{ inputs.go-version }}
+      - uses: lpasquali/rune-ci/actions/license-check@main
+        with:
+          language: go

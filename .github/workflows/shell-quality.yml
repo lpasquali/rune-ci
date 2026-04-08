@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Shell Quality
+
+on:
+  workflow_call:
+    inputs:
+      script-dirs:
+        description: "Space-separated directories containing scripts"
+        type: string
+        required: false
+        default: "scripts"
+      script-glob:
+        description: "Glob pattern for shell scripts"
+        type: string
+        required: false
+        default: "*.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      shell: ${{ steps.diff.outputs.shell }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Compute changed paths
+        id: diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" 2>/dev/null || echo ".")
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              CHANGED="."
+            else
+              CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" 2>/dev/null || echo ".")
+            fi
+          fi
+          if printf '%s\n' "$CHANGED" | grep -qE '\.(sh|bash|ya?ml|json|toml)$'; then
+            echo "shell=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "shell=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  shellcheck:
+    name: RuneGate/Lint/ShellCheck
+    needs: [changes]
+    if: needs.changes.outputs.shell == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: ShellCheck
+        run: |
+          for dir in ${{ inputs.script-dirs }}; do
+            if compgen -G "${dir}/${{ inputs.script-glob }}" > /dev/null 2>&1; then
+              shellcheck ${dir}/${{ inputs.script-glob }}
+            fi
+          done
+
+  yamllint:
+    name: RuneGate/Lint/YAMLLint
+    needs: [changes]
+    if: needs.changes.outputs.shell == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: YAMLLint
+        run: |
+          pip install yamllint
+          yamllint . || true

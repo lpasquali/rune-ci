@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "Container image to scan (empty to skip SBOM)"
+        type: string
+        required: false
+        default: ""
+      cvss-threshold:
+        description: "CVSS score threshold for blocking"
+        type: string
+        required: false
+        default: "7.0"
+      vex-file:
+        description: "Path to OpenVEX file"
+        type: string
+        required: false
+        default: ".vex/permanent.openvex.json"
+      gitleaks-version:
+        description: "Gitleaks binary version"
+        type: string
+        required: false
+        default: "8.24.3"
+
+permissions:
+  contents: read
+
+jobs:
+  security-secrets:
+    name: RuneGate/Security/SecretScanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: lpasquali/rune-ci/actions/gitleaks-scan@main
+        with:
+          gitleaks-version: ${{ inputs.gitleaks-version }}
+          event-name: ${{ github.event_name }}
+          pr-base-sha: ${{ github.event.pull_request.base.sha }}
+          pr-head-sha: ${{ github.event.pull_request.head.sha }}
+          push-before-sha: ${{ github.event.before }}
+          current-sha: ${{ github.sha }}
+
+  security-sbom:
+    name: RuneGate/Security/SBOM-and-CVE-Policy
+    if: inputs.image != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: lpasquali/rune-ci/actions/sbom-scan@main
+        with:
+          image: ${{ inputs.image }}
+          cvss-threshold: ${{ inputs.cvss-threshold }}
+          vex-file: ${{ inputs.vex-file }}
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        if: always()
+        with:
+          name: sbom-security-outputs
+          path: sbom/
+          retention-days: 14

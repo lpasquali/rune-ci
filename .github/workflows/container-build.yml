@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Container Build
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "Image name (e.g., rune, rune-operator)"
+        type: string
+        required: true
+      registry-owner:
+        description: "Registry owner/namespace"
+        type: string
+        required: false
+        default: "lpasquali"
+      dockerfile:
+        description: "Path to Dockerfile"
+        type: string
+        required: false
+        default: "./Dockerfile"
+      tag-prefix:
+        description: "Tag prefix (e.g., 'ci-' for CI builds)"
+        type: string
+        required: false
+        default: "ci-"
+      push:
+        description: "Push images to registry"
+        type: boolean
+        required: false
+        default: true
+      notify-charts:
+        description: "Send repository_dispatch to rune-charts on push to main"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-amd64:
+    name: Build image (amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: lpasquali/rune-ci/actions/docker-setup@main
+        id: docker
+        with:
+          registry-owner: ${{ inputs.registry-owner }}
+          image-name: ${{ inputs.image-name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          platform: linux/amd64
+      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }}
+          platforms: linux/amd64
+          push: ${{ inputs.push }}
+          tags: ${{ steps.docker.outputs.full-image }}:${{ inputs.tag-prefix }}${{ github.sha }}-amd64
+          cache-from: ${{ steps.docker.outputs.cache-from }}
+          cache-to: ${{ steps.docker.outputs.cache-to }}
+
+  build-arm64:
+    name: Build image (arm64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: lpasquali/rune-ci/actions/docker-setup@main
+        id: docker
+        with:
+          registry-owner: ${{ inputs.registry-owner }}
+          image-name: ${{ inputs.image-name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          platform: linux/arm64
+      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }}
+          platforms: linux/arm64
+          push: ${{ inputs.push }}
+          tags: ${{ steps.docker.outputs.full-image }}:${{ inputs.tag-prefix }}${{ github.sha }}-arm64
+          cache-from: ${{ steps.docker.outputs.cache-from }}
+          cache-to: ${{ steps.docker.outputs.cache-to }}
+
+  manifest:
+    name: Create multi-arch manifest
+    needs: [build-amd64, build-arm64]
+    if: inputs.push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and push manifest
+        run: |
+          IMAGE="ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}"
+          TAG="${{ inputs.tag-prefix }}${{ github.sha }}"
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${TAG}" \
+            "${IMAGE}:${TAG}-amd64" \
+            "${IMAGE}:${TAG}-arm64"

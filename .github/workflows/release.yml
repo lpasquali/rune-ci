@@ -1,0 +1,144 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "Image name (e.g., rune, rune-operator)"
+        type: string
+        required: true
+      registry-owner:
+        description: "Registry owner/namespace"
+        type: string
+        required: false
+        default: "lpasquali"
+      dockerfile:
+        description: "Path to Dockerfile"
+        type: string
+        required: false
+        default: "./Dockerfile"
+      notify-charts:
+        description: "Send repository_dispatch to rune-charts"
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      RUNE_CHARTS_BOT_TOKEN:
+        description: "Token for cross-repo dispatch to rune-charts"
+        required: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  verify-tag:
+    name: Verify tag is on main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Verify tag ancestry
+        run: |
+          git fetch origin main
+          COMMIT_SHA=$(git rev-parse "${GITHUB_SHA}^{commit}" 2>/dev/null || echo "$GITHUB_SHA")
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" origin/main; then
+            echo "ERROR: Tagged commit is not reachable from origin/main." >&2
+            echo "Tags must only be pushed AFTER merging to main." >&2
+            exit 1
+          fi
+
+  build-amd64:
+    name: Build image (amd64)
+    needs: [verify-tag]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: lpasquali/rune-ci/actions/docker-setup@main
+        id: docker
+        with:
+          registry-owner: ${{ inputs.registry-owner }}
+          image-name: ${{ inputs.image-name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          platform: linux/amd64
+      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.docker.outputs.full-image }}:${{ github.ref_name }}-amd64
+          cache-from: ${{ steps.docker.outputs.cache-from }}
+          cache-to: ${{ steps.docker.outputs.cache-to }}
+
+  build-arm64:
+    name: Build image (arm64)
+    needs: [verify-tag]
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: lpasquali/rune-ci/actions/docker-setup@main
+        id: docker
+        with:
+          registry-owner: ${{ inputs.registry-owner }}
+          image-name: ${{ inputs.image-name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          platform: linux/arm64
+      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: .
+          file: ${{ inputs.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.docker.outputs.full-image }}:${{ github.ref_name }}-arm64
+          cache-from: ${{ steps.docker.outputs.cache-from }}
+          cache-to: ${{ steps.docker.outputs.cache-to }}
+
+  manifest-and-release:
+    name: Create manifest + GitHub Release
+    needs: [build-amd64, build-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create multi-arch manifest
+        run: |
+          IMAGE="ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}"
+          TAG="${{ github.ref_name }}"
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${TAG}" \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}:${TAG}-amd64" \
+            "${IMAGE}:${TAG}-arm64"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --generate-notes \
+            --verify-tag
+      - name: Notify rune-charts
+        if: inputs.notify-charts
+        env:
+          CROSS_REPO_TOKEN: ${{ secrets.RUNE_CHARTS_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CROSS_REPO_TOKEN:-}" ]; then
+            echo "RUNE_CHARTS_BOT_TOKEN is not set. Skipping."
+            exit 0
+          fi
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${CROSS_REPO_TOKEN}" \
+            https://api.github.com/repos/lpasquali/rune-charts/dispatches \
+            -d "{\"event_type\":\"image-published\",\"client_payload\":{\"source_repo\":\"${GITHUB_REPOSITORY}\",\"image_name\":\"ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}\",\"image_tag\":\"${{ github.ref_name }}\"}}"

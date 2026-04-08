@@ -1,0 +1,168 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Python Quality
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.14"
+      coverage-threshold:
+        description: "Minimum coverage percentage"
+        type: string
+        required: false
+        default: "97"
+      source-dirs:
+        description: "Space-separated source directories for coverage/lint"
+        type: string
+        required: true
+      test-deps:
+        description: "Extra pip packages for testing (space-separated)"
+        type: string
+        required: false
+        default: "pytest pytest-cov pytest-xdist"
+      lint-enabled:
+        description: "Run ruff + mypy"
+        type: boolean
+        required: false
+        default: true
+      sast-enabled:
+        description: "Run bandit"
+        type: boolean
+        required: false
+        default: true
+      license-check-enabled:
+        description: "Run license compliance"
+        type: boolean
+        required: false
+        default: true
+      allowed-license-exceptions:
+        description: "Comma-separated allowed package exceptions"
+        type: string
+        required: false
+        default: ""
+      path-filter:
+        description: "Regex for path change detection"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Compute changed paths
+        id: diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" 2>/dev/null || echo ".")
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              CHANGED="."
+            else
+              CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" 2>/dev/null || echo ".")
+            fi
+          fi
+          if printf '%s\n' "$CHANGED" | grep -qE '${{ inputs.path-filter }}'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  coverage:
+    name: RuneGate/Coverage/Python
+    needs: [changes]
+    if: needs.changes.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install --prefer-binary -r requirements.txt ${{ inputs.test-deps }}
+      - name: Coverage
+        run: |
+          COV_ARGS=""
+          for dir in ${{ inputs.source-dirs }}; do
+            COV_ARGS="${COV_ARGS} --cov=${dir}"
+          done
+          .venv/bin/python -m pytest ${COV_ARGS} --cov-report=term-missing:skip-covered --cov-fail-under=${{ inputs.coverage-threshold }}
+
+  linting:
+    name: RuneGate/Lint/Python
+    needs: [changes]
+    if: needs.changes.outputs.relevant == 'true' && inputs.lint-enabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install --prefer-binary -r requirements.txt ruff mypy
+      - name: Ruff
+        run: .venv/bin/ruff check ${{ inputs.source-dirs }}
+      - name: MyPy
+        run: .venv/bin/mypy ${{ inputs.source-dirs }} || true
+
+  sast:
+    name: RuneGate/Security/SAST
+    needs: [changes]
+    if: needs.changes.outputs.relevant == 'true' && inputs.sast-enabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Bandit
+        run: |
+          pip install bandit
+          bandit -r ${{ inputs.source-dirs }} -ll
+
+  license-check:
+    name: RuneGate/Security/LicenseCompliance
+    needs: [changes]
+    if: needs.changes.outputs.relevant == 'true' && inputs.license-check-enabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - uses: lpasquali/rune-ci/actions/license-check@main
+        with:
+          language: python
+          python-version: ${{ inputs.python-version }}
+          allowed-exceptions: ${{ inputs.allowed-license-exceptions }}
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+        if: always()
+        with:
+          name: license-reports
+          path: licenses-python.json
+          retention-days: 14
