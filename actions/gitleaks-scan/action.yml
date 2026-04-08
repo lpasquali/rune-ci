@@ -1,14 +1,65 @@
 # SPDX-License-Identifier: Apache-2.0
-# Stub — implementation in rune-docs#130
 name: "Gitleaks Secret Scan"
-description: "Run Gitleaks secret scanning against the repository"
+description: "Run Gitleaks secret scanning with range-based PR detection (IEC 62443-4-1 ML4 SM-8)"
+
 inputs:
   gitleaks-version:
     description: "Gitleaks binary version"
     required: false
     default: "8.24.3"
+  event-name:
+    description: "GitHub event name (github.event_name)"
+    required: true
+  pr-base-sha:
+    description: "PR base SHA (github.event.pull_request.base.sha)"
+    required: false
+    default: ""
+  pr-head-sha:
+    description: "PR head SHA (github.event.pull_request.head.sha)"
+    required: false
+    default: ""
+  push-before-sha:
+    description: "Push before SHA (github.event.before)"
+    required: false
+    default: ""
+  current-sha:
+    description: "Current SHA (github.sha)"
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
-    - shell: bash
-      run: echo "::error::Stub action — not yet implemented (rune-docs#130)"
+    - name: Download gitleaks
+      shell: bash
+      run: |
+        set -euo pipefail
+        VERSION="${{ inputs.gitleaks-version }}"
+        curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+          | tar -xzf - -C /tmp gitleaks
+        /tmp/gitleaks version
+
+    - name: "gitleaks \u2014 hardcoded credential detection"
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ "${{ inputs.event-name }}" = "pull_request" ]; then
+          BASE="${{ inputs.pr-base-sha }}"
+          HEAD="${{ inputs.pr-head-sha }}"
+        else
+          BASE="${{ inputs.push-before-sha }}"
+          HEAD="${{ inputs.current-sha }}"
+        fi
+
+        SCAN_ARGS=()
+        if [ -n "$BASE" ] \
+           && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
+           && git cat-file -t "$BASE" >/dev/null 2>&1; then
+          SCAN_ARGS=(--log-opts "--no-merges --first-parent ${BASE}..${HEAD}")
+          echo "Range scan: ${BASE}..${HEAD}"
+        else
+          echo "Base SHA not available \u2014 scanning full repository"
+        fi
+
+        /tmp/gitleaks detect --redact -v --exit-code=1 "${SCAN_ARGS[@]}"

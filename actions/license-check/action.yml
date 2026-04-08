@@ -1,17 +1,115 @@
 # SPDX-License-Identifier: Apache-2.0
-# Stub — implementation in rune-docs#132
 name: "License Compliance Check"
-description: "Verify dependencies against license blocklist (AGPL, GPL)"
+description: "Verify dependencies against license blocklist (IEC 62443-4-1 ML4 SM-2)"
+
 inputs:
   language:
     description: "Language ecosystem: python or go"
     required: true
-  blocked-licenses:
-    description: "Comma-separated list of blocked SPDX identifiers"
+  python-version:
+    description: "Python version (for python language only)"
     required: false
-    default: "AGPL-3.0-only,AGPL-3.0-or-later,GPL-2.0-only,GPL-2.0-or-later,GPL-3.0-only,GPL-3.0-or-later"
+    default: "3.14"
+  requirements-file:
+    description: "Path to requirements file (python only)"
+    required: false
+    default: "requirements.txt"
+  blocked-licenses:
+    description: "Comma-separated disallowed license tokens (case-insensitive substring match)"
+    required: false
+    default: "agpl,gplv3,gpl v3,gnu general public license v3,gnu affero general public license,gplv2,gpl v2,gpl-2.0,gnu general public license v2"
+  allowed-exceptions:
+    description: "Comma-separated package names exempt from blocklist (case-insensitive)"
+    required: false
+    default: ""
+
 runs:
   using: "composite"
   steps:
-    - shell: bash
-      run: echo "::error::Stub action — not yet implemented (rune-docs#132)"
+    - name: "License compliance — Python (pip-licenses)"
+      if: inputs.language == 'python'
+      shell: bash
+      run: |
+        set -euo pipefail
+        rc=0
+
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq libjpeg-dev zlib1g-dev 2>/dev/null || true
+
+        python -m venv .license-venv
+        . .license-venv/bin/activate
+        pip install --upgrade pip -q
+        for attempt in 1 2 3; do
+          if pip install --prefer-binary -r "${{ inputs.requirements-file }}" pip-licenses -q; then
+            rc=0
+            break
+          fi
+          rc=1
+          echo "pip install attempt ${attempt} failed, retrying..."
+          sleep 3
+        done
+
+        if [ "$rc" -eq 0 ]; then
+          pip-licenses --format=json --output-file=licenses-python.json || rc=1
+        fi
+
+        if [ ! -f licenses-python.json ]; then
+          printf '[]\n' > licenses-python.json
+        fi
+
+        if [ "$rc" -eq 0 ]; then
+        python - <<'PY' || rc=1
+        import json, os
+        from pathlib import Path
+
+        disallowed_tokens = tuple(
+            t.strip().lower()
+            for t in os.environ.get("BLOCKED_LICENSES", "").split(",")
+            if t.strip()
+        )
+        allowed_package_exceptions = {
+            p.strip().lower()
+            for p in os.environ.get("ALLOWED_EXCEPTIONS", "").split(",")
+            if p.strip()
+        }
+
+        rows = json.loads(Path("licenses-python.json").read_text(encoding="utf-8"))
+        blocked = []
+        allowed_hits = []
+        for row in rows:
+            pkg = str(row.get("Name", "unknown"))
+            lic = str(row.get("License", "")).lower()
+            if any(token in lic for token in disallowed_tokens):
+                entry = (pkg, row.get("Version", "unknown"), row.get("License", ""))
+                if pkg.lower() in allowed_package_exceptions:
+                    allowed_hits.append(entry)
+                else:
+                    blocked.append(entry)
+
+        print(f"license rows: {len(rows)}")
+        print(f"blocked licenses: {len(blocked)}")
+        print(f"allowed exception hits: {len(allowed_hits)}")
+        for name, version, license_name in allowed_hits[:30]:
+            print(f"ALLOW-EXCEPTION: {name} {version} -> {license_name}")
+        for name, version, license_name in blocked[:30]:
+            print(f"BLOCK: {name} {version} -> {license_name}")
+
+        if blocked:
+            raise SystemExit(1)
+        PY
+        fi
+
+        deactivate
+        rm -rf .license-venv
+        exit "$rc"
+      env:
+        BLOCKED_LICENSES: ${{ inputs.blocked-licenses }}
+        ALLOWED_EXCEPTIONS: ${{ inputs.allowed-exceptions }}
+
+    - name: "License compliance — Go (go-licenses)"
+      if: inputs.language == 'go'
+      shell: bash
+      run: |
+        set -euo pipefail
+        go install github.com/google/go-licenses@v1.6.0
+        go-licenses check ./... --disallowed_types=restricted,reciprocal

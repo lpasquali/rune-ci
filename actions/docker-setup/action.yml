@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-# Stub — implementation in rune-docs#133
 name: "Docker Login + Buildx Setup"
-description: "Authenticate to GHCR and configure Docker Buildx with registry caching"
+description: "Authenticate to GHCR, configure Docker Buildx, and set up registry caching"
+
 inputs:
   registry:
     description: "Container registry"
@@ -13,8 +13,45 @@ inputs:
   image-name:
     description: "Image name (without registry prefix)"
     required: true
+  github-token:
+    description: "GitHub token for registry authentication"
+    required: true
+  platform:
+    description: "Target platform (linux/amd64 or linux/arm64)"
+    required: false
+    default: "linux/amd64"
+
+outputs:
+  full-image:
+    description: "Full image reference (registry/owner/name)"
+    value: ${{ steps.meta.outputs.full-image }}
+  cache-from:
+    description: "Cache-from reference for docker/build-push-action"
+    value: ${{ steps.meta.outputs.cache-from }}
+  cache-to:
+    description: "Cache-to reference for docker/build-push-action"
+    value: ${{ steps.meta.outputs.cache-to }}
+
 runs:
   using: "composite"
   steps:
-    - shell: bash
-      run: echo "::error::Stub action — not yet implemented (rune-docs#133)"
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+
+    - name: Log in to registry
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}
+
+    - name: Compute image metadata
+      id: meta
+      shell: bash
+      run: |
+        ARCH="${{ inputs.platform }}"
+        ARCH_SUFFIX="${ARCH##*/}"
+        FULL="${{ inputs.registry }}/${{ inputs.registry-owner }}/${{ inputs.image-name }}"
+        echo "full-image=${FULL}" >> "$GITHUB_OUTPUT"
+        echo "cache-from=type=registry,ref=${FULL}:buildcache-${ARCH_SUFFIX}" >> "$GITHUB_OUTPUT"
+        echo "cache-to=type=registry,ref=${FULL}:buildcache-${ARCH_SUFFIX},mode=max" >> "$GITHUB_OUTPUT"

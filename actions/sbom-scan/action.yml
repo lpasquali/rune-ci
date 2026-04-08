@@ -1,21 +1,142 @@
 # SPDX-License-Identifier: Apache-2.0
-# Stub — implementation in rune-docs#131
 name: "SBOM + CVE Scan"
-description: "Generate SBOM (Syft) and scan for vulnerabilities (Grype, Trivy)"
+description: "Generate SBOM (Syft) and scan for vulnerabilities (Grype, Trivy) with IEC 62443 CVE policy"
+
 inputs:
   image:
-    description: "Container image to scan"
+    description: "Container image to scan (local tag or registry ref)"
     required: true
+  syft-version:
+    description: "Syft container image version"
+    required: false
+    default: "v1.17.0"
+  grype-version:
+    description: "Grype container image version"
+    required: false
+    default: "v0.82.0"
+  trivy-version:
+    description: "Trivy container image version"
+    required: false
+    default: "0.65.0"
   cvss-threshold:
-    description: "CVSS score threshold for blocking"
+    description: "CVSS score threshold for blocking fixable vulnerabilities"
     required: false
     default: "7.0"
   vex-file:
     description: "Path to OpenVEX file for suppression"
     required: false
     default: ".vex/permanent.openvex.json"
+  grype-config:
+    description: "Path to Grype config file"
+    required: false
+    default: ".grype.yaml"
+  output-dir:
+    description: "Directory for SBOM and scan output files"
+    required: false
+    default: "sbom"
+
 runs:
   using: "composite"
   steps:
-    - shell: bash
-      run: echo "::error::Stub action — not yet implemented (rune-docs#131)"
+    - name: Generate SBOM — CycloneDX via Syft (IEC 62443-4-1 ML4 SM-9)
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "${{ inputs.output-dir }}"
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "${PWD}:/work" \
+          anchore/syft:${{ inputs.syft-version }} \
+          "${{ inputs.image }}" \
+          -o cyclonedx-json=/work/${{ inputs.output-dir }}/image.cdx.json
+
+    - name: Scan SBOM — Grype + Trivy (IEC 62443-4-1 ML4 SVV-3 / DM-4)
+      shell: bash
+      run: |
+        set -euo pipefail
+        OUT="${{ inputs.output-dir }}"
+        VEX_ARGS=""
+        GRYPE_ARGS=""
+
+        if [ -f "${{ inputs.vex-file }}" ]; then
+          VEX_ARGS="--vex /work/${{ inputs.vex-file }}"
+        fi
+        if [ -f "${{ inputs.grype-config }}" ]; then
+          GRYPE_ARGS="-c /work/${{ inputs.grype-config }}"
+        fi
+
+        docker run --rm -v "${PWD}:/work" \
+          anchore/grype:${{ inputs.grype-version }} \
+          ${GRYPE_ARGS} \
+          sbom:/work/${OUT}/image.cdx.json \
+          ${VEX_ARGS} \
+          -o json > "${OUT}/grype.json"
+
+        docker run --rm -v "${PWD}:/work" \
+          aquasec/trivy:${{ inputs.trivy-version }} \
+          sbom /work/${OUT}/image.cdx.json \
+          ${VEX_ARGS} \
+          --format json \
+          --output /work/${OUT}/trivy.json \
+          --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+
+    - name: Enforce CVE policy — IEC 62443-4-1 ML4 DM-4
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+
+        BLOCK_THRESHOLD = float("${{ inputs.cvss-threshold }}")
+        WARN_THRESHOLD  = BLOCK_THRESHOLD
+
+        vex_path = Path("${{ inputs.vex-file }}")
+        VENDOR_CONSTRAINED = set()
+        if vex_path.exists():
+            vex_doc = json.loads(vex_path.read_text(encoding="utf-8"))
+            for stmt in vex_doc.get("statements", []):
+                vuln_name = (stmt.get("vulnerability") or {}).get("name", "")
+                if vuln_name and stmt.get("status") in {"affected", "not_affected"}:
+                    VENDOR_CONSTRAINED.add(vuln_name)
+
+        def safe_float(v):
+            try: return float(v or 0)
+            except: return 0.0
+
+        findings = []
+        for f in sorted(Path("${{ inputs.output-dir }}").glob("*.json")):
+            data = json.loads(f.read_text(encoding="utf-8"))
+            if "matches" in data:
+                for m in data.get("matches", []):
+                    vuln = m.get("vulnerability", {})
+                    fix_state = (vuln.get("fix") or {}).get("state", "unknown")
+                    fixable = fix_state == "fixed"
+                    scores = []
+                    for c in vuln.get("cvss", []) or []:
+                        metrics = c.get("metrics", {})
+                        for k in ("baseScore", "base_score"):
+                            scores.append(safe_float(metrics.get(k)))
+                    findings.append((vuln.get("id", "UNKNOWN"), max(scores) if scores else 0.0, f.name, fixable))
+            elif "Results" in data:
+                for r in data.get("Results", []) or []:
+                    for v in r.get("Vulnerabilities", []) or []:
+                        score = 0.0
+                        for vendor in ("nvd", "redhat", "ghsa"):
+                            score = max(score, safe_float((v.get("CVSS") or {}).get(vendor, {}).get("V3Score")))
+                        fixable = bool((v.get("FixedVersion") or "").strip())
+                        findings.append((v.get("VulnerabilityID", "UNKNOWN"), score, f.name, fixable))
+
+        blocked = [x for x in findings if x[1] >= BLOCK_THRESHOLD and x[3] and x[0] not in VENDOR_CONSTRAINED]
+        warned  = [x for x in findings if x[1] >= WARN_THRESHOLD and (not x[3] or x[0] in VENDOR_CONSTRAINED)]
+
+        print(f"Total findings     : {len(findings)}")
+        print(f"Blocked (policy)   : {len(blocked)}")
+        print(f"Warned (unfixable) : {len(warned)}  — logged in SBOM artifact, VEX acceptance required within patch SLA")
+        for row in blocked[:30]:
+            print(f"BLOCK [fixable] {row[0]}  cvss={row[1]:.1f}  src={row[2]}")
+        for row in warned[:10]:
+            print(f"WARN  [constrained/unfixable] {row[0]}  cvss={row[1]:.1f}  src={row[2]}")
+
+        if blocked:
+            raise SystemExit(1)
+        PY
