@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Python Integration & Smoke
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.14"
+      ollama-enabled:
+        description: "Run Ollama integration tests"
+        type: boolean
+        required: false
+        default: true
+      ollama-model:
+        description: "Ollama model to pull"
+        type: string
+        required: false
+        default: "tinyllama"
+      smoke-install-enabled:
+        description: "Run bare install smoke tests"
+        type: boolean
+        required: false
+        default: true
+      path-filter:
+        description: "Regex for path change detection"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.diff.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Compute changed paths
+        id: diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" 2>/dev/null || echo ".")
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              CHANGED="."
+            else
+              CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}" 2>/dev/null || echo ".")
+            fi
+          fi
+          if printf '%s\n' "$CHANGED" | grep -qE '${{ inputs.path-filter }}'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  ollama:
+    name: RuneGate/Ollama-Integration
+    needs: [changes]
+    if: needs.changes.outputs.relevant == 'true' && inputs.ollama-enabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install --upgrade pip
+          pip install --prefer-binary -r requirements.txt pytest respx
+      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+        id: cache-ollama-models
+        with:
+          path: /tmp/ollama-models
+          key: ollama-${{ inputs.ollama-model }}-${{ runner.os }}-v1
+      - name: Start Ollama container
+        run: |
+          mkdir -p /tmp/ollama-models
+          docker run -d --name ollama \
+            -v /tmp/ollama-models:/root/.ollama \
+            -p 11434:11434 \
+            ollama/ollama
+      - name: Wait for Ollama to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Pull model
+        run: docker exec ollama ollama pull ${{ inputs.ollama-model }}
+      - name: Run integration tests
+        env:
+          OLLAMA_TEST_URL: http://localhost:11434
+          OLLAMA_TEST_MODEL: ${{ inputs.ollama-model }}
+        run: .venv/bin/python -m pytest -m integration -p no:cov -o addopts='' -v --tb=short tests/test_ollama_integration.py
+      - name: Stop Ollama
+        if: always()
+        run: docker rm -f ollama 2>/dev/null || true
+
+  smoke-install:
+    name: RuneGate/PackageInstall/Smoke
+    needs: [changes]
+    if: needs.changes.outputs.relevant == 'true' && inputs.smoke-install-enabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.11"
+      - name: Build wheel
+        run: |
+          pip install --upgrade pip build
+          python -m build --wheel
+      - name: Bare install
+        run: |
+          python -m venv .venv-bare
+          .venv-bare/bin/pip install --upgrade pip --quiet
+          .venv-bare/bin/pip install dist/*.whl --quiet
+          PKG_NAME=$(echo "${{ github.event.repository.name }}" | sed 's/-/_/g')
+          .venv-bare/bin/python -c "import ${PKG_NAME}; print('Import OK')" || true
