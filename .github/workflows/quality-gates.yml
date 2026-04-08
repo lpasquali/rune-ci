@@ -55,6 +55,21 @@ jobs:
           push-before-sha: ${{ github.event.before }}
           current-sha: ${{ github.sha }}
 
+  integration-tests:
+    name: RuneGate/Test/IntegrationSuite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.14"
+      - name: Install test dependencies
+        run: pip install pytest pyyaml
+      - name: Run Python unit tests
+        run: pytest tests/ -v --tb=short
+      - name: Run workflow structure tests
+        run: ./tests/test_workflow_structure.sh
+
   pr-body-check:
     name: RuneGate/Process/PR-Body-Compliance
     if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
@@ -93,7 +108,7 @@ jobs:
   merge-gate:
     name: Merge Gate
     if: always()
-    needs: [lint-workflows, lint-yaml, security-secrets, pr-body-check]
+    needs: [lint-workflows, lint-yaml, security-secrets, integration-tests, pr-body-check]
     runs-on: ubuntu-latest
     steps:
       - name: Verify all gates passed
