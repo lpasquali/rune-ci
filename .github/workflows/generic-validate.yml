@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Generic Validation
+
+on:
+  workflow_call:
+    inputs:
+      validate-yaml:
+        description: "Path to YAML validation script"
+        type: string
+        required: false
+        default: ""
+      validate-vex:
+        description: "Path to VEX validation script"
+        type: string
+        required: false
+        default: ""
+      required-files:
+        description: "Space-separated list of required files"
+        type: string
+        required: false
+        default: "README.md LICENSE SECURITY.md CONTRIBUTING.md"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: RuneGate/Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Validate YAML syntax
+        if: inputs.validate-yaml != ''
+        run: python3 ${{ inputs.validate-yaml }}
+      - name: Validate OpenVEX documents
+        if: inputs.validate-vex != ''
+        run: python3 ${{ inputs.validate-vex }}
+      - name: Verify required files
+        run: |
+          set -euo pipefail
+          for f in ${{ inputs.required-files }}; do
+            [ -f "$f" ] || { echo "MISSING: $f"; exit 1; }
+          done
