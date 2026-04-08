@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Sync Upstream Images
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    name: Sync image tag to active branches
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: Sync
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_NAME: ${{ github.event.client_payload.image_name }}
+          IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
+          SOURCE_REPO: ${{ github.event.client_payload.source_repo }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 .ci/sync_image_tag.py
+          if ! git diff --quiet; then
+            git add .
+            git commit -m "chore(ci): sync ${IMAGE_NAME}:${IMAGE_TAG} from ${SOURCE_REPO}"
+            git push origin HEAD
+          fi
