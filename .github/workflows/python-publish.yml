@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Python Publish
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version"
+        type: string
+        required: false
+        default: "3.11"
+      pypi-project:
+        description: "PyPI project name"
+        type: string
+        required: true
+      bare-install-test:
+        description: "Verify bare install works"
+        type: boolean
+        required: false
+        default: true
+      tag-docs:
+        description: "Tag rune-docs with matching version"
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      RUNE_CHARTS_BOT_TOKEN:
+        description: "Token for cross-repo tag on rune-docs"
+        required: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and publish to PyPI
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/${{ inputs.pypi-project }}/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: "pip"
+
+      - name: Verify tag is on main and version matches pyproject.toml
+        run: |
+          git fetch origin main
+          COMMIT_SHA=$(git rev-parse "${GITHUB_SHA}^{commit}" 2>/dev/null || echo "$GITHUB_SHA")
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" origin/main; then
+            echo "ERROR: Tagged commit is not reachable from origin/main." >&2
+            echo "Tags must only be pushed AFTER merging to main." >&2
+            exit 1
+          fi
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(python3 - <<'PY'
+          import tomllib, pathlib
+          with open("pyproject.toml", "rb") as f:
+              print(tomllib.load(f)["project"]["version"])
+          PY
+          )
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: Tag version ($TAG_VERSION) does not match pyproject.toml version ($PKG_VERSION)." >&2
+            exit 1
+          fi
+          echo "Version check passed: $PKG_VERSION"
+
+      - name: Install build tools
+        run: pip install --upgrade pip build twine
+
+      - name: Build sdist and wheel
+        run: python3 -m build
+
+      - name: Verify bare install works (no extras)
+        if: inputs.bare-install-test
+        run: |
+          python3 -m venv .venv-bare
+          .venv-bare/bin/pip install --upgrade pip --quiet
+          .venv-bare/bin/pip install dist/*.whl --quiet
+          # Try to find a package to import (generic check)
+          # We expect the repo name to match the package name mostly
+          PKG_NAME=$(echo "${{ github.event.repository.name }}" | sed 's/-/_/g')
+          .venv-bare/bin/python -c "import ${PKG_NAME}; print('Import: OK')" || echo "Warning: Could not import ${PKG_NAME}"
+
+      - name: Verify dist contents
+        run: twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            --verify-tag \
+            dist/*.whl dist/*.tar.gz
+
+      - name: Tag rune-docs with matching version
+        if: inputs.tag-docs
+        env:
+          CROSS_REPO_TOKEN: ${{ secrets.RUNE_CHARTS_BOT_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CROSS_REPO_TOKEN:-}" ]; then
+            echo "RUNE_CHARTS_BOT_TOKEN not set — skipping rune-docs tag."
+            exit 0
+          fi
+          DOCS_SHA=$(curl -fsSL \
+            -H "Authorization: Bearer ${CROSS_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository_owner }}/rune-docs/git/refs/heads/main \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['object']['sha'])")
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${CROSS_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository_owner }}/rune-docs/git/refs \
+            -d "{\"ref\": \"refs/tags/${TAG}\", \"sha\": \"${DOCS_SHA}\"}"
+          echo "Tagged rune-docs with ${TAG}"
