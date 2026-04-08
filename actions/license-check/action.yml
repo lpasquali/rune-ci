@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# Stub — implementation in rune-docs#132
+name: "License Compliance Check"
+description: "Verify dependencies against license blocklist (AGPL, GPL)"
+inputs:
+  language:
+    description: "Language ecosystem: python or go"
+    required: true
+  blocked-licenses:
+    description: "Comma-separated list of blocked SPDX identifiers"
+    required: false
+    default: "AGPL-3.0-only,AGPL-3.0-or-later,GPL-2.0-only,GPL-2.0-or-later,GPL-3.0-only,GPL-3.0-or-later"
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: echo "::error::Stub action — not yet implemented (rune-docs#132)"
