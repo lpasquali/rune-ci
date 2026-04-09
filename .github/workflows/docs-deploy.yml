@@ -30,9 +30,17 @@ jobs:
           python-version: ${{ inputs.python-version }}
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Deploy versioned docs
         run: |
-          VERSION=$(grep '^version:' docs/context/CURRENT_STATE.md | awk '{print $2}' || echo "latest")
-          mike deploy --push --update-aliases "$VERSION" latest
-          mike set-default latest
+          pip install --upgrade pip
+          pip install -r requirements.txt mike
+      - name: Deploy "dev" snapshot via mike
+        run: |
+          # This reusable workflow is intended to be wired to ``push: branches: [main]``
+          # in the consumer repo. Versioned tag releases (and the "latest" alias)
+          # are managed by the consumer's own ``pages.yml`` which triggers on
+          # ``push: tags: [v*]``. To avoid double-managing the "latest" alias and
+          # to avoid the ``alias 'latest' already specified as a version`` mike
+          # error that the previous fallback produced, we always deploy to a fixed
+          # ``dev`` mike version here. The consumer-side version selector exposes
+          # ``dev`` alongside any tagged versions.
+          mike deploy --push dev
