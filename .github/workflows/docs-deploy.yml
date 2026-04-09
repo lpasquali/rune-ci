@@ -34,5 +34,5 @@ jobs:
       - name: Deploy versioned docs
         run: |
           VERSION=$(grep '^version:' docs/context/CURRENT_STATE.md | awk '{print $2}' || echo "latest")
-          mike deploy --push --update-aliases $VERSION latest
+          mike deploy --push --update-aliases "$VERSION" latest
           mike set-default latest

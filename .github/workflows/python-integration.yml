@@ -95,7 +95,7 @@ jobs:
             ollama/ollama
       - name: Wait for Ollama to be ready
         run: |
-          for i in {1..30}; do
+          for _i in {1..30}; do
             if curl -fsS http://localhost:11434/api/tags > /dev/null 2>&1; then
               exit 0
             fi
