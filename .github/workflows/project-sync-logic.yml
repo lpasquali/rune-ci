@@ -24,13 +24,16 @@ jobs:
             const STATUS_OPTIONS = {
               "Todo": "f75ad846",
               "In progress": "47fc9ee4",
+              "Blocked": "2b6a9394",
+              "Review": "8038f042",
               "Done": "98236657"
             };
-            
+
             const AGENT_OPTIONS = {
               "gemini_cli": "5f149a49",
               "claude_cli": "adb883c9",
-              "copilot_cli": "e38e173e"
+              "copilot_cli": "e38e173e",
+              "human": "5bacc4d4"
             };
 
             const payload = context.payload;
