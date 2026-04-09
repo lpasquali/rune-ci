@@ -38,7 +38,7 @@ runs:
 
         python -m venv .license-venv
         . .license-venv/bin/activate
-        pip install --upgrade pip -q
+        pip install pip==26.0 -q
         for attempt in 1 2 3; do
           if pip install --prefer-binary -r "${{ inputs.requirements-file }}" pip-licenses -q; then
             rc=0
