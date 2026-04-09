@@ -39,11 +39,14 @@ jobs:
             const PROJECT_ID = "PVT_kwHOABsqts4BT6xG";
             const AGENT_LANE_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBM-jU";
 
+            // Option IDs come from GitHub Project "Agent Lane" single-select (project #1).
+            // Updated 2026-04-09: Cursor added; GitHub regenerated all option IDs via updateProjectV2Field.
             const AGENT_OPTIONS = {
-              "gemini_cli": "5f149a49",
-              "claude_cli": "adb883c9",
-              "copilot_cli": "e38e173e",
-              "human": "5bacc4d4"
+              "gemini_cli": "f8021f9d",
+              "claude_cli": "b1fdabb1",
+              "copilot_cli": "734c1610",
+              "cursor_cli": "51769f29",
+              "human": "c9a63cea"
             };
 
             const payload = context.payload;
