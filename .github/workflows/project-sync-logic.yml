@@ -1,6 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 name: Project Sync Logic
 
+# This workflow only handles two things that Projects v2 built-in workflows
+# cannot do on a personal/free account:
+#   1. Manual auto-add via addProjectV2ItemById (filter-based Auto-add to
+#      project is gated to GitHub Team / Enterprise plans).
+#   2. Map <agent>_cli labels to the custom Agent Lane single-select field
+#      (built-ins cannot set custom fields from labels).
+#
+# Status field transitions (Todo / In progress / Done) are handled entirely
+# by Projects v2 built-in workflows configured in the project UI:
+#   - Item added to project   -> Status = Todo
+#   - Item closed             -> Status = Done
+#   - Item reopened           -> Status = Todo
+#   - Pull request merged     -> Status = Done
+#
+# See lpasquali/rune-docs#187 for the design rationale.
+
 on:
   workflow_call:
     secrets:
@@ -21,16 +37,7 @@ jobs:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
             const PROJECT_ID = "PVT_kwHOABsqts4BT6xG";
-            const STATUS_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBGX1s";
             const AGENT_LANE_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBM-jU";
-
-            const STATUS_OPTIONS = {
-              "Todo": "f75ad846",
-              "In progress": "47fc9ee4",
-              "Blocked": "2b6a9394",
-              "Review": "8038f042",
-              "Done": "98236657"
-            };
 
             const AGENT_OPTIONS = {
               "gemini_cli": "5f149a49",
@@ -44,9 +51,7 @@ jobs:
             const labels = payload.issue ? payload.issue.labels : payload.pull_request.labels;
             const labelNames = labels ? labels.map(l => l.name) : [];
 
-            console.log(`Processing content: ${contentId}`);
-
-            // 1. Add item to project
+            // 1. Manual auto-add (idempotent)
             const addResult = await github.graphql(`
               mutation($project: ID!, $content: ID!) {
                 addProjectV2ItemById(input: {projectId: $project, contentId: $content}) {
@@ -54,23 +59,18 @@ jobs:
                 }
               }
             `, { project: PROJECT_ID, content: contentId });
-
             const itemId = addResult.addProjectV2ItemById.item.id;
-            console.log(`Project Item ID: ${itemId}`);
 
-            // 2. Determine Status
-            let targetStatus = "Todo";
-            if (payload.action === "closed" || payload.issue?.state === "closed" || payload.pull_request?.merged) {
-              targetStatus = "Done";
-            } else if (payload.issue?.assignees?.length > 0 || payload.pull_request || labelNames.some(l => l.endsWith('_cli'))) {
-              targetStatus = "In progress";
+            // 2. Map <agent>_cli labels to Agent Lane
+            let agentOption = null;
+            for (const [label, optionId] of Object.entries(AGENT_OPTIONS)) {
+              if (labelNames.includes(label)) {
+                agentOption = optionId;
+                break;
+              }
             }
+            if (!agentOption) return;
 
-            if (labelNames.includes("status/todo") && targetStatus !== "Done") {
-              targetStatus = "Todo";
-            }
-
-            console.log(`Setting Status to: ${targetStatus}`);
             await github.graphql(`
               mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
                 updateProjectV2ItemFieldValue(input: {
@@ -83,34 +83,6 @@ jobs:
             `, {
               project: PROJECT_ID,
               item: itemId,
-              field: STATUS_FIELD_ID,
-              option: STATUS_OPTIONS[targetStatus]
+              field: AGENT_LANE_FIELD_ID,
+              option: agentOption
             });
-
-            // 3. Determine Agent Lane
-            let agentOption = null;
-            for (const [label, optionId] of Object.entries(AGENT_OPTIONS)) {
-              if (labelNames.includes(label)) {
-                agentOption = optionId;
-                break;
-              }
-            }
-
-            if (agentOption) {
-              console.log("Setting Agent Lane...");
-              await github.graphql(`
-                mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
-                  updateProjectV2ItemFieldValue(input: {
-                    projectId: $project,
-                    itemId: $item,
-                    fieldId: $field,
-                    value: { singleSelectOptionId: $option }
-                  }) { projectV2Item { id } }
-                }
-              `, {
-                project: PROJECT_ID,
-                item: itemId,
-                field: AGENT_LANE_FIELD_ID,
-                option: agentOption
-              });
-            }
