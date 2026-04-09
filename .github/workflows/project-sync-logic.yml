@@ -7,6 +7,9 @@ on:
       PROJECT_TOKEN:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     runs-on: ubuntu-latest
