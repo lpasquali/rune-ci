@@ -6,7 +6,9 @@ name: Project Sync Logic
 #   1. Manual auto-add via addProjectV2ItemById (filter-based Auto-add to
 #      project is gated to GitHub Team / Enterprise plans).
 #   2. Map <agent>_cli labels to the custom Agent Lane single-select field
-#      (built-ins cannot set custom fields from labels).
+#      (built-ins cannot set custom fields from labels). If no label matches
+#      on a pull request, infer Agent Lane from Co-authored-by trailers on the
+#      latest commit on the PR branch (same heuristics as project-backfill).
 #
 # Status field transitions (Todo / In progress / Done) are handled entirely
 # by Projects v2 built-in workflows configured in the project UI:
@@ -49,6 +51,24 @@ jobs:
               "human": "c9a63cea"
             };
 
+            function agentOptionFromCoauthorMessage(message) {
+              const lines = String(message || "").split(/\r?\n/);
+              const trails = [];
+              for (const line of lines) {
+                const m = line.match(/^Co-authored-by:\s*(.+)$/i);
+                if (m) trails.push(m[1].trim());
+              }
+              for (const t of trails) {
+                const low = t.toLowerCase();
+                if (low.includes("copilot")) return AGENT_OPTIONS.copilot_cli;
+                if (low.includes("cursor")) return AGENT_OPTIONS.cursor_cli;
+                if (low.includes("anthropic") || low.includes("claude")) return AGENT_OPTIONS.claude_cli;
+                if (low.includes("gemini")) return AGENT_OPTIONS.gemini_cli;
+              }
+              if (trails.length > 0) return AGENT_OPTIONS.human;
+              return null;
+            }
+
             const payload = context.payload;
             const contentId = payload.issue ? payload.issue.node_id : payload.pull_request.node_id;
             const labels = payload.issue ? payload.issue.labels : payload.pull_request.labels;
@@ -64,12 +84,26 @@ jobs:
             `, { project: PROJECT_ID, content: contentId });
             const itemId = addResult.addProjectV2ItemById.item.id;
 
-            // 2. Map <agent>_cli labels to Agent Lane
+            // 2. Map <agent>_cli labels to Agent Lane; else infer from last PR commit co-authors
             let agentOption = null;
             for (const [label, optionId] of Object.entries(AGENT_OPTIONS)) {
               if (labelNames.includes(label)) {
                 agentOption = optionId;
                 break;
+              }
+            }
+            if (!agentOption && payload.pull_request) {
+              const { owner, repo } = context.repo;
+              const { data: commits } = await github.rest.pulls.listCommits({
+                owner,
+                repo,
+                pull_number: payload.pull_request.number,
+                per_page: 100
+              });
+              if (commits.length) {
+                const last = commits[commits.length - 1];
+                const msg = last.commit && last.commit.message ? last.commit.message : "";
+                agentOption = agentOptionFromCoauthorMessage(msg);
               }
             }
             if (!agentOption) return;
