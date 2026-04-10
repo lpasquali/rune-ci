@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+# Reusable workflow: SR-2 quantitative requirement gate (rune-audit).
+name: SR-2 compliance
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version for rune-audit
+        type: string
+        required: false
+        default: "3.14"
+      strict:
+        description: If true, fail when inspectors are still stubs (exit 2)
+        type: boolean
+        required: false
+        default: false
+      rune-audit-ref:
+        description: Git ref (branch/tag/SHA) of lpasquali/rune-audit to checkout
+        type: string
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  sr2-verify:
+    name: SR-2 verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: lpasquali/rune-audit
+          ref: ${{ inputs.rune-audit-ref }}
+          path: rune-audit
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install rune-audit
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "./rune-audit"
+      - name: Run SR-2 verify
+        env:
+          SR2_STRICT: ${{ inputs.strict }}
+        run: |
+          if [ "${SR2_STRICT}" = "true" ]; then
+            rune-audit sr2 verify . --strict
+          else
+            rune-audit sr2 verify .
+          fi
