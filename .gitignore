@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 actionlint
+
+# Claude Code per-project agent state
+.claude/
