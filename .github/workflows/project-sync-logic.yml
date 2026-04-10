@@ -8,7 +8,7 @@ name: Project Sync Logic
 #   2. Map <agent>_cli labels to the custom Agent Lane single-select field
 #      (built-ins cannot set custom fields from labels). If no label matches
 #      on a pull request, infer Agent Lane from Co-authored-by trailers on the
-#      latest commit on the PR branch (same heuristics as project-backfill).
+#      PR head commit message (same heuristics as project-backfill).
 #
 # Status field transitions (Todo / In progress / Done) are handled entirely
 # by Projects v2 built-in workflows configured in the project UI:
@@ -94,15 +94,14 @@ jobs:
             }
             if (!agentOption && payload.pull_request) {
               const { owner, repo } = context.repo;
-              const { data: commits } = await github.rest.pulls.listCommits({
-                owner,
-                repo,
-                pull_number: payload.pull_request.number,
-                per_page: 100
-              });
-              if (commits.length) {
-                const last = commits[commits.length - 1];
-                const msg = last.commit && last.commit.message ? last.commit.message : "";
+              const sha = payload.pull_request.head && payload.pull_request.head.sha;
+              if (sha) {
+                const { data: full } = await github.rest.repos.getCommit({
+                  owner,
+                  repo,
+                  ref: sha
+                });
+                const msg = full.commit && full.commit.message ? full.commit.message : "";
                 agentOption = agentOptionFromCoauthorMessage(msg);
               }
             }

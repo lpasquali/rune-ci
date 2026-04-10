@@ -87,15 +87,19 @@ jobs:
                   }
                 }
                 if (!agentOption && issue.pull_request) {
-                  const { data: commits } = await github.rest.pulls.listCommits({
+                  const { data: pr } = await github.rest.pulls.get({
                     owner,
                     repo,
-                    pull_number: issue.number,
-                    per_page: 100
+                    pull_number: issue.number
                   });
-                  if (commits.length) {
-                    const last = commits[commits.length - 1];
-                    const msg = last.commit && last.commit.message ? last.commit.message : "";
+                  const sha = pr.head && pr.head.sha;
+                  if (sha) {
+                    const { data: full } = await github.rest.repos.getCommit({
+                      owner,
+                      repo,
+                      ref: sha
+                    });
+                    const msg = full.commit && full.commit.message ? full.commit.message : "";
                     agentOption = agentOptionFromCoauthorMessage(msg);
                   }
                 }
