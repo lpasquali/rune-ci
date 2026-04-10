@@ -1,0 +1,126 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Project Backfill Logic
+
+# Scheduled / manual sweep: for each open issue and open PR in the *caller*
+# repository, run the same add-to-project + Agent Lane mapping as
+# project-sync-logic.yml (event-driven). Catches items created while
+# project-sync was unavailable (e.g. secret rotation).
+#
+# See lpasquali/rune-docs#187 and project-sync-logic.yml.
+
+on:
+  workflow_call:
+    secrets:
+      PROJECT_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backfill open issues and PRs to project
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const core = require('@actions/core');
+            const PROJECT_ID = "PVT_kwHOABsqts4BT6xG";
+            const AGENT_LANE_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBM-jU";
+
+            const AGENT_OPTIONS = {
+              "gemini_cli": "f8021f9d",
+              "claude_cli": "b1fdabb1",
+              "copilot_cli": "734c1610",
+              "cursor_cli": "51769f29",
+              "human": "c9a63cea"
+            };
+
+            function agentOptionFromCoauthorMessage(message) {
+              const lines = String(message || "").split(/\r?\n/);
+              const trails = [];
+              for (const line of lines) {
+                const m = line.match(/^Co-authored-by:\s*(.+)$/i);
+                if (m) trails.push(m[1].trim());
+              }
+              for (const t of trails) {
+                const low = t.toLowerCase();
+                if (low.includes("copilot")) return AGENT_OPTIONS.copilot_cli;
+                if (low.includes("cursor")) return AGENT_OPTIONS.cursor_cli;
+                if (low.includes("anthropic") || low.includes("claude")) return AGENT_OPTIONS.claude_cli;
+                if (low.includes("gemini")) return AGENT_OPTIONS.gemini_cli;
+              }
+              if (trails.length > 0) return AGENT_OPTIONS.human;
+              return null;
+            }
+
+            const { owner, repo } = context.repo;
+            const opts = github.rest.issues.listForRepo.endpoint.merge({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100
+            });
+            const issues = await github.paginate(opts);
+
+            for (const issue of issues) {
+              try {
+                const contentId = issue.node_id;
+                const labelNames = (issue.labels || []).map((l) => l.name);
+
+                const addResult = await github.graphql(`
+                  mutation($project: ID!, $content: ID!) {
+                    addProjectV2ItemById(input: {projectId: $project, contentId: $content}) {
+                      item { id }
+                    }
+                  }
+                `, { project: PROJECT_ID, content: contentId });
+                const itemId = addResult.addProjectV2ItemById.item.id;
+
+                let agentOption = null;
+                for (const [label, optionId] of Object.entries(AGENT_OPTIONS)) {
+                  if (labelNames.includes(label)) {
+                    agentOption = optionId;
+                    break;
+                  }
+                }
+                if (!agentOption && issue.pull_request) {
+                  const { data: pr } = await github.rest.pulls.get({
+                    owner,
+                    repo,
+                    pull_number: issue.number
+                  });
+                  const sha = pr.head && pr.head.sha;
+                  if (sha) {
+                    const { data: full } = await github.rest.repos.getCommit({
+                      owner,
+                      repo,
+                      ref: sha
+                    });
+                    const msg = full.commit && full.commit.message ? full.commit.message : "";
+                    agentOption = agentOptionFromCoauthorMessage(msg);
+                  }
+                }
+                if (!agentOption) continue;
+
+                await github.graphql(`
+                  mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: $project,
+                      itemId: $item,
+                      fieldId: $field,
+                      value: { singleSelectOptionId: $option }
+                    }) { projectV2Item { id } }
+                  }
+                `, {
+                  project: PROJECT_ID,
+                  item: itemId,
+                  field: AGENT_LANE_FIELD_ID,
+                  option: agentOption
+                });
+              } catch (e) {
+                core.warning(`Backfill skip ${issue.html_url}: ${e.message}`);
+              }
+            }

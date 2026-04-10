@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# Template: Copy this file to .github/workflows/project-backfill.yml in each consumer repo.
+# Requires: PROJECT_TOKEN secret (PAT with `project` scope) set at org or repo level.
+name: Project Board Backfill
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 06:00 UTC — catches items created while the event-driven
+    # project-sync.yml was not running (e.g. during a secret rotation).
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    uses: lpasquali/rune-ci/.github/workflows/project-backfill-logic.yml@main
+    secrets:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
