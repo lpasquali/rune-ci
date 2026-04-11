@@ -53,6 +53,10 @@ All consumer repos pin to a **tagged release** of `rune-ci` (e.g., `@v0.1.0`). B
 | `helm-quality.yml` | helm lint + trivy config scan | rune-charts |
 | `docs-quality.yml` | mkdocs build --strict + pymarkdown | rune-docs |
 | `shell-quality.yml` | shellcheck + yamllint | rune-airgapped |
+| `codeql-callable.yml` | CodeQL via `workflow_call` (`language`: python or go) | Optional thin callers |
+| `codeql.yml` | Standalone **Code Scanning (CodeQL)** for this repository (Python; same layout as `rune`) | `rune-ci` only |
+
+Implementation for the split lives in commit `45b2db6` (retro process tracking: **#21**).
 
 ## License
 
