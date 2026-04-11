@@ -26,7 +26,6 @@ jobs:
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
-            const core = require('@actions/core');
             const PROJECT_ID = "PVT_kwHOABsqts4BT6xG";
             const AGENT_LANE_FIELD_ID = "PVTSSF_lAHOABsqts4BT6xGzhBM-jU";
 
