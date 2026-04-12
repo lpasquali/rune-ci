@@ -9,6 +9,8 @@
 #   4. All composite actions document their required inputs
 #   5. All workflow files reference SHA-pinned actions
 #   6. No inline scripts exceed the 200-line safety limit
+#   9. SPDX headers on workflows, actions, scripts, docker/*.Dockerfile
+#  10. docker/rune-ui-slim.Dockerfile is multi-stage (canonical UI image)
 #
 # Usage:
 #   ./tests/test_workflow_structure.sh
@@ -228,7 +230,7 @@ done
 # -----------------------------------------------------------------------
 echo ""
 echo "=== Test 9: SPDX license headers ==="
-for f in "${WORKFLOWS_DIR}"/*.yml "${ACTIONS_DIR}"/*/action.yml "${REPO_ROOT}"/scripts/*.py; do
+for f in "${WORKFLOWS_DIR}"/*.yml "${ACTIONS_DIR}"/*/action.yml "${REPO_ROOT}"/scripts/*.py "${REPO_ROOT}"/docker/*.Dockerfile; do
   [ ! -f "$f" ] && continue
   name="$(basename "$f")"
   if head -2 "$f" | grep -q "SPDX-License-Identifier"; then
@@ -237,6 +239,26 @@ for f in "${WORKFLOWS_DIR}"/*.yml "${ACTIONS_DIR}"/*/action.yml "${REPO_ROOT}"/s
     fail "missing SPDX header: ${name}"
   fi
 done
+
+# -----------------------------------------------------------------------
+# Test 10: Canonical docker/rune-ui-slim.Dockerfile is multi-stage
+# -----------------------------------------------------------------------
+echo ""
+echo "=== Test 10: rune-ui canonical Dockerfile (multi-stage) ==="
+REF="${REPO_ROOT}/docker/rune-ui-slim.Dockerfile"
+if [ ! -f "$REF" ]; then
+  fail "missing ${REF}"
+elif python3 -c "
+import pathlib, re
+p = pathlib.Path('$REF')
+t = p.read_text()
+from_count = len(re.findall(r'^FROM ', t, re.MULTILINE))
+assert from_count >= 2, f'expected >=2 FROM stages, got {from_count}'
+" 2>/dev/null; then
+  pass "docker/rune-ui-slim.Dockerfile has builder + final stages"
+else
+  fail "docker/rune-ui-slim.Dockerfile must be multi-stage (>=2 FROM lines)"
+fi
 
 # -----------------------------------------------------------------------
 # Summary
