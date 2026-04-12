@@ -80,7 +80,8 @@ jobs:
           esac
 
       - name: Verify upstream quality jobs
-        uses: ./actions/merge-gate-verify
+        # Caller repo checkout does not contain ./actions — pin to this repo (same tree as reusable workflows).
+        uses: lpasquali/rune-ci/actions/merge-gate-verify@eae13830420fe3b9d558edb081c01c90bdc01d03
         with:
           needs-json: ${{ inputs.needs-json }}
           merge-gate-excludes: ${{ inputs.merge-gate-excludes }}
