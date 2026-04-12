@@ -13,6 +13,11 @@ on:
         type: string
         required: false
         default: ""
+      pr-body-profile:
+        description: "Profile for pr-body-compliance action (consumer or rune-ci)"
+        type: string
+        required: false
+        default: "consumer"
 
 permissions:
   contents: read
@@ -26,7 +31,7 @@ jobs:
       - name: Validate PR body structure
         uses: lpasquali/rune-ci/actions/pr-body-compliance@28f0a894fab12882433dd76f31b2d17b78800cbb
         with:
-          profile: consumer
+          profile: ${{ inputs.pr-body-profile }}
 
   rune-gate-policy:
     name: RuneGate/Merge/UpstreamPolicy
