@@ -201,11 +201,13 @@ import yaml
 with open('$QG') as fh:
     data = yaml.safe_load(fh)
 jobs = data.get('jobs', {})
-assert 'merge-gate' in jobs, 'merge-gate job missing'
+c = jobs.get('compliance', {})
+uses = str(c.get('uses', ''))
+assert 'compliance' in jobs and 'pr-compliance.yml' in uses, 'compliance job calling pr-compliance.yml missing'
 " 2>/dev/null; then
-  pass "merge-gate job in quality-gates.yml"
+  pass "quality-gates.yml delegates merge gate to pr-compliance (compliance job)"
 else
-  fail "merge-gate job missing in quality-gates.yml"
+  fail "quality-gates.yml must have compliance job using pr-compliance.yml"
 fi
 
 # -----------------------------------------------------------------------
