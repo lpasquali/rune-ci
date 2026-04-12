@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+name: "Merge gate verify"
+description: >-
+  Fail the job unless every upstream job in needs-json is success or skipped,
+  except job ids listed in merge-gate-excludes (comma-separated).
+
+inputs:
+  needs-json:
+    description: "JSON object from toJson(needs) for upstream jobs only"
+    required: true
+  merge-gate-excludes:
+    description: "Comma-separated caller job ids to ignore when failed/cancelled"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Verify upstream job results
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        import json, os
+
+        data = json.loads(os.environ["NEEDS_JSON"])
+        excludes = {
+            x.strip()
+            for x in os.environ.get("EXCLUDES", "").split(",")
+            if x.strip()
+        }
+        failed = [
+            (k, v.get("result"))
+            for k, v in data.items()
+            if v.get("result") not in ("success", "skipped") and k not in excludes
+        ]
+        for k, v in data.items():
+            print(f"{k}: {v.get('result')}")
+        if failed:
+            print("Merge blocked due to failing RuneGate checks:")
+            for item in failed:
+                print(f"- {item[0]}: {item[1]}")
+            raise SystemExit(1)
+        print("All RuneGate upstream checks passed.")
+        PY
+      env:
+        NEEDS_JSON: ${{ inputs.needs-json }}
+        EXCLUDES: ${{ inputs.merge-gate-excludes }}

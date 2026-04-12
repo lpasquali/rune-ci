@@ -112,21 +112,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify all gates passed
-        env:
-          NEEDS_JSON: ${{ toJson(needs) }}
-        run: |
-          python3 - <<'PY'
-          import json, os
-          data = json.loads(os.environ['NEEDS_JSON'])
-          failed = [(k, v.get('result')) for k, v in data.items() if v.get('result') not in ('success', 'skipped')]
-          for k, v in data.items():
-              print(f'{k}: {v.get("result")}')
-          if failed:
-              print('Merge blocked:')
-              for item in failed:
-                  print(f'- {item[0]}: {item[1]}')
-              raise SystemExit(1)
-          PY
+        uses: ./actions/merge-gate-verify
+        with:
+          needs-json: ${{ toJson(needs) }}
 
   ml4-peer-review:
     name: RuneGate/Compliance/ML4-Automated-Approval

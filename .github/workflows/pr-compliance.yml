@@ -62,39 +62,32 @@ jobs:
               console.log('PR body compliance check passed.');
             }
 
-  merge-gate:
-    name: Merge Gate
+  rune-gate-policy:
+    name: RuneGate/Merge/UpstreamPolicy
     if: always()
     needs: [pr-body-check]
     runs-on: ubuntu-latest
     steps:
-      - name: Verify all gates passed
-        env:
-          NEEDS_JSON: ${{ inputs.needs-json }}
-          EXCLUDES: ${{ inputs.merge-gate-excludes }}
+      - name: Require PR body compliance when applicable
         run: |
-          python3 - <<'PY'
-          import json, os
-          data = json.loads(os.environ['NEEDS_JSON'])
-          excludes = {x.strip() for x in os.environ.get('EXCLUDES', '').split(',') if x.strip()}
-          failed = [
-              (k, v.get('result'))
-              for k, v in data.items()
-              if v.get('result') not in ('success', 'skipped') and k not in excludes
-          ]
-          for k, v in data.items():
-              print(f'{k}: {v.get("result")}')
-          if failed:
-              print('Merge blocked due to failing RuneGate checks:')
-              for item in failed:
-                  print(f'- {item[0]}: {item[1]}')
-              raise SystemExit(1)
-          print('All RuneGate checks passed.')
-          PY
+          set -euo pipefail
+          case "${{ needs.pr-body-check.result }}" in
+            success|skipped) ;;
+            *)
+              echo "::error::PR body compliance did not succeed (result=${{ needs.pr-body-check.result }})."
+              exit 1
+              ;;
+          esac
+
+      - name: Verify upstream quality jobs
+        uses: ./actions/merge-gate-verify
+        with:
+          needs-json: ${{ inputs.needs-json }}
+          merge-gate-excludes: ${{ inputs.merge-gate-excludes }}
 
   ml4-peer-review:
     name: RuneGate/Compliance/ML4-Automated-Approval
-    needs: [merge-gate]
+    needs: [rune-gate-policy]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -118,3 +111,35 @@ jobs:
                 'objective two-person peer-review requirement.',
               ].join('')
             });
+
+  merge-gate:
+    name: Merge Gate
+    needs: [pr-body-check, rune-gate-policy, ml4-peer-review]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Finalize merge gate
+        run: |
+          set -euo pipefail
+          ok() {
+            case "$1" in success|skipped) return 0 ;; *) return 1 ;; esac
+          }
+          body="${{ needs.pr-body-check.result }}"
+          policy="${{ needs.rune-gate-policy.result }}"
+          ml4="${{ needs.ml4-peer-review.result }}"
+          echo "pr-body-check: ${body}"
+          echo "rune-gate-policy: ${policy}"
+          echo "ml4-peer-review: ${ml4}"
+          if ! ok "${body}"; then
+            echo "::error::PR body check must be success or skipped (got ${body})."
+            exit 1
+          fi
+          if [ "${policy}" != "success" ]; then
+            echo "::error::Upstream policy gate must succeed (got ${policy})."
+            exit 1
+          fi
+          if ! ok "${ml4}"; then
+            echo "::error::ML4 review job must be success or skipped (got ${ml4})."
+            exit 1
+          fi
+          echo "Merge Gate Satisfied"

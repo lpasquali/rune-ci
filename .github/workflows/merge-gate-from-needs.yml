@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Merge Gate (needs only)
+
+on:
+  workflow_call:
+    inputs:
+      needs-json:
+        description: "JSON from toJson(needs) of the calling merge-gate job"
+        type: string
+        required: true
+      merge-gate-excludes:
+        description: "Comma-separated caller job ids to treat as non-blocking when failed"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  merge-gate:
+    name: Merge Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify upstream job results
+        uses: ./actions/merge-gate-verify
+        with:
+          needs-json: ${{ inputs.needs-json }}
+          merge-gate-excludes: ${{ inputs.merge-gate-excludes }}

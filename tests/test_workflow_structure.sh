@@ -60,6 +60,7 @@ echo ""
 echo "=== Test 2: Reusable workflow trigger validation ==="
 REUSABLE_WORKFLOWS=(
   "codeql-callable.yml"
+  "merge-gate-from-needs.yml"
   "security-scan.yml"
   "pr-compliance.yml"
   "python-quality.yml"
