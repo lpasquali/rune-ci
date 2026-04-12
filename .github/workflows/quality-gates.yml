@@ -76,34 +76,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR body structure
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: ./actions/pr-body-compliance
         with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
-            const body = pr.data.body || '';
-            const errors = [];
-            if (!/[Cc]loses?\s+\S*#\d+|[Ff]ixes?\s+\S*#\d+|[Rr]esolves?\s+\S*#\d+/.test(body)) {
-              errors.push('PR must reference an issue (Closes #NNN, Fixes #NNN, or Resolves #NNN)');
-            }
-            if (!/\[x\]\s+\*\*Level\s+[123]/.test(body)) {
-              errors.push('PR must check exactly one DoD level');
-            }
-            if (!/## Acceptance Criteria Evidence/.test(body)) {
-              errors.push('PR must include "## Acceptance Criteria Evidence" section');
-            }
-            if (!/## Audit Checks/.test(body)) {
-              errors.push('PR must include "## Audit Checks" section');
-            }
-            if (!/## Breaking Changes/.test(body)) {
-              errors.push('PR must include "## Breaking Changes" section');
-            }
-            if (errors.length > 0) {
-              core.setFailed(errors.map(e => `- ${e}`).join('\n'));
-            }
+          profile: rune-ci
 
   merge-gate:
     name: Merge Gate
@@ -124,20 +99,4 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              event: 'APPROVE',
-              body: [
-                '✅ **RuneGate Automated Approval**\n\n',
-                'Under IEC 62443-4-1 ML4 guidelines, this PR has been ',
-                'automatically approved because it deterministically ',
-                'passed all strict Quality Gates (Coverage > 97%, SAST, ',
-                'SCA, SBOM, and SLSA L3 provenance). This satisfies the ',
-                'objective two-person peer-review requirement.',
-              ].join('')
-            });
+      - uses: ./actions/ml4-auto-approve

@@ -24,43 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR body structure
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: lpasquali/rune-ci/actions/pr-body-compliance@28f0a894fab12882433dd76f31b2d17b78800cbb
         with:
-          script: |
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
-            const body = pr.data.body || '';
-            const errors = [];
-            if (!/\[x\]\s+\*\*Level\s+[123]/.test(body)) {
-              errors.push('PR must check exactly one DoD level (Level 1, 2, or 3)');
-            }
-            if (!/## Acceptance Criteria Evidence/.test(body)) {
-              errors.push('PR must include "## Acceptance Criteria Evidence" section');
-            }
-            if (!/## Audit Checks/.test(body)) {
-              errors.push('PR must include "## Audit Checks" section');
-            }
-            if (/## Audit Checks/.test(body) && !/PASS|FAIL|No triggers fired/.test(body)) {
-              errors.push('Audit Checks section must report PASS/FAIL results or state "No triggers fired"');
-            }
-            if (/\|\s*FAIL\s*\|/.test(body)) {
-              errors.push('PR has FAIL audit check results — resolve before merging');
-            }
-            if (!/## Breaking Changes/.test(body)) {
-              errors.push('PR must include "## Breaking Changes" section');
-            }
-            if (errors.length > 0) {
-              const msg = '**PR Body Compliance Check Failed**\n\n' +
-                errors.map(e => `- ${e}`).join('\n') +
-                '\n\nRefer to the PR template and SYSTEM_PROMPT.md for requirements.';
-              core.setFailed(msg);
-              console.log(msg);
-            } else {
-              console.log('PR body compliance check passed.');
-            }
+          profile: consumer
 
   rune-gate-policy:
     name: RuneGate/Merge/UpstreamPolicy
@@ -81,7 +47,7 @@ jobs:
 
       - name: Verify upstream quality jobs
         # Caller repo checkout does not contain ./actions — pin to this repo (same tree as reusable workflows).
-        uses: lpasquali/rune-ci/actions/merge-gate-verify@eae13830420fe3b9d558edb081c01c90bdc01d03
+        uses: lpasquali/rune-ci/actions/merge-gate-verify@28f0a894fab12882433dd76f31b2d17b78800cbb
         with:
           needs-json: ${{ inputs.needs-json }}
           merge-gate-excludes: ${{ inputs.merge-gate-excludes }}
@@ -95,23 +61,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Approve PR via Automated Quality Gates
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              event: 'APPROVE',
-              body: [
-                '✅ **RuneGate Automated Approval**\n\n',
-                'Under IEC 62443-4-1 ML4 guidelines, this PR has been ',
-                'automatically approved because it deterministically ',
-                'passed all strict Quality Gates (Coverage > 97%, SAST, ',
-                'SCA, SBOM, and SLSA L3 provenance). This satisfies the ',
-                'objective two-person peer-review requirement.',
-              ].join('')
-            });
+        uses: lpasquali/rune-ci/actions/ml4-auto-approve@28f0a894fab12882433dd76f31b2d17b78800cbb
 
   merge-gate:
     name: Merge Gate
