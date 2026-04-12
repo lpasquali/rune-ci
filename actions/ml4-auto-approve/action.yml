@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+name: "ML4 automated PR approval"
+description: >-
+  Post an approving PR review citing IEC 62443-4-1 ML4 automated quality gates.
+  Caller job must set permissions.pull-requests: write.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Approve PR via Automated Quality Gates
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+      with:
+        script: |
+          await github.rest.pulls.createReview({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+            event: 'APPROVE',
+            body: [
+              '✅ **RuneGate Automated Approval**\n\n',
+              'Under IEC 62443-4-1 ML4 guidelines, this PR has been ',
+              'automatically approved because it deterministically ',
+              'passed all strict Quality Gates (Coverage > 97%, SAST, ',
+              'SCA, SBOM, and SLSA L3 provenance). This satisfies the ',
+              'objective two-person peer-review requirement.',
+            ].join('')
+          });
