@@ -43,7 +43,7 @@ and block merge on failure.
 | `test_license_check.py` | License blocklist logic from `actions/license-check/action.yml` |
 | `test_cve_policy.py` | CVE threshold/VEX suppression from `actions/sbom-scan/action.yml` |
 | `test_pr_compliance.py` | PR body regex validation from `pr-compliance.yml` |
-| `test_workflow_structure.sh` | YAML validity, `workflow_call` triggers, SHA pinning, permissions, SPDX headers |
+| `test_workflow_structure.sh` | YAML validity, `workflow_call` triggers, SHA pinning, permissions, SPDX on `docker/*.Dockerfile`, multi-stage `docker/rune-ui-slim.Dockerfile` |
 
 ## Fixture Scenarios
 
