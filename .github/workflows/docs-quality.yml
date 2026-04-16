@@ -76,4 +76,4 @@ jobs:
       - name: PyMarkdown
         run: |
           pip install pymarkdownlnt
-          pymarkdown scan README.md docs || true
+          pymarkdown scan README.md docs
