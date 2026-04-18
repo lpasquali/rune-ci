@@ -65,6 +65,17 @@ jobs:
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version: ${{ inputs.go-version }}
+      - name: Create kind cluster
+        run: |
+          set -euo pipefail
+          # Install kind
+          go install sigs.k8s.io/kind@latest
+          # Create cluster
+          kind create cluster --name test-cluster
+          # Export kubeconfig
+          mkdir -p "${HOME}/.kube"
+          kind get kubeconfig --name test-cluster > "${HOME}/.kube/config"
+          echo "KUBECONFIG=${HOME}/.kube/config" >> "${GITHUB_ENV}"
       - name: Run tests with coverage
         run: |
           set -euo pipefail
@@ -76,6 +87,9 @@ jobs:
             echo "Coverage ${TOTAL}% is below threshold ${THRESHOLD}%"
             exit 1
           fi
+      - name: Clean up kind cluster
+        if: always()
+        run: kind delete cluster --name test-cluster || true
 
   format:
     name: RuneGate/Lint/GoFmt
