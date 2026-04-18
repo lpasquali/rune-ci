@@ -1,0 +1,209 @@
+# SPDX-License-Identifier: Apache-2.0
+name: "RUNE nginx / ingress-nginx Guard"
+description: >-
+  Regression lint for rune-docs ADR 0008. Fails the job if the repository
+  reintroduces nginx as a container base image, or couples a Helm chart
+  to ingress-nginx via annotations, IngressClass hardcoding, or
+  dependency. See rune-docs#295 and rune-docs/docs/architecture/adrs/
+  0008-single-container-http-tool-and-ingress-agnosticism.md.
+
+inputs:
+  scan-path:
+    description: "Root path to scan (default: repository root)."
+    required: false
+    default: "."
+  extra-exempt-paths:
+    description: >-
+      Newline-separated path prefixes (relative to scan-path) to exempt
+      from ALL four rules. Use for this repo's own fixtures, vendored
+      third-party code, or historical directories that should not be
+      rewritten. Built-in path exemptions (always on): files under
+      docs/, .vex/, and any *.md path (rules 2 and 4 only).
+    required: false
+    default: ""
+  extra-exempt-from-rule1:
+    description: >-
+      Newline-separated file paths (relative to scan-path) whose `FROM
+      nginx` lines are exempt from rule 1 without an inline pragma.
+      `rune/tests/test_k8sgpt_driver.py` is exempt by default.
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: "nginx / ingress-nginx guard"
+      shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.scan-path }}
+        EXTRA_EXEMPT_PATHS: ${{ inputs.extra-exempt-paths }}
+        EXTRA_EXEMPT_RULE1: ${{ inputs.extra-exempt-from-rule1 }}
+      run: |
+        set -euo pipefail
+
+        cd "${SCAN_PATH}"
+
+        fail=0
+        sep="---"
+
+        note() { printf '[guard] %s\n' "$1"; }
+        err()  { printf '[guard][FAIL] %s\n' "$1" >&2; fail=1; }
+
+        # -------------------------------------------------------------------
+        # Build exemption lists
+        # -------------------------------------------------------------------
+        # extra-exempt-paths applies to ALL rules: path prefix exemption.
+        # is_doc_exempt is a narrower built-in: rules 2 & 4 only exclude
+        # docs/, .vex/, and *.md paths because documentation is allowed
+        # to reference nginx-ingress by name.
+        readarray -t EXTRA_PATHS <<<"${EXTRA_EXEMPT_PATHS}"
+
+        is_extra_exempt() {
+          local p="$1"
+          for extra in "${EXTRA_PATHS[@]}"; do
+            [ -z "$extra" ] && continue
+            case "$p" in
+              "$extra"|"$extra"/*) return 0 ;;
+            esac
+          done
+          return 1
+        }
+
+        is_doc_exempt() {
+          local p="$1"
+          case "$p" in
+            docs/*|*/docs/*) return 0 ;;
+            .vex/*|*/.vex/*) return 0 ;;
+            *.md) return 0 ;;
+          esac
+          is_extra_exempt "$p"
+        }
+
+        # Rule 1: specific-path exemptions (no pragma required)
+        # Default: rune/tests/test_k8sgpt_driver.py (simulated broken-pod fixture)
+        readarray -t EXTRA_R1 <<<"${EXTRA_EXEMPT_RULE1}"
+        is_rule1_path_exempt() {
+          local p="$1"
+          case "$p" in
+            rune/tests/test_k8sgpt_driver.py|tests/test_k8sgpt_driver.py) return 0 ;;
+          esac
+          for extra in "${EXTRA_R1[@]}"; do
+            [ -z "$extra" ] && continue
+            [ "$p" = "$extra" ] && return 0
+          done
+          is_extra_exempt "$p"
+        }
+
+        # -------------------------------------------------------------------
+        # Rule 1: no `FROM nginx` in container images (without pragma)
+        # -------------------------------------------------------------------
+        # Common build-output / dependency directories excluded from all scans.
+        # These are NEVER source files; scanning them produces only false
+        # positives (escaped HTML in MkDocs output, vendored copies, etc.).
+        PRUNE_DIRS='-path ./.git -o -path ./site -o -path ./_site -o -path ./build -o -path ./dist -o -path ./target -o -path ./node_modules -o -path ./.venv -o -path ./venv -o -path ./.tox'
+
+        note "Rule 1: scanning Dockerfiles for FROM nginx"
+        # Collect candidate files: any Dockerfile (name or *.Dockerfile)
+        mapfile -t dockerfiles < <(
+          eval "find . \\( $PRUNE_DIRS \\) -prune -o -type f -print" \
+            | sed 's|^\./||' \
+            | grep -E '(^|/)(Dockerfile|[^/]*\.[Dd]ockerfile)$' || true
+        )
+        tmp_r1=$(mktemp)
+        for f in "${dockerfiles[@]}"; do
+          [ -f "$f" ] || continue
+          is_rule1_path_exempt "$f" && continue
+          # Find FROM nginx lines; pragma `# allow-nginx: <reason>` on any
+          # of the 3 lines above the FROM suppresses the violation.
+          awk -v file="$f" '
+            BEGIN { buf[0]=""; buf[1]=""; buf[2]=""; }
+            {
+              line=$0
+              if (line ~ /^[[:space:]]*FROM[[:space:]]+(docker\.io\/library\/)?nginx([:@[:space:]]|$)/) {
+                allow = 0
+                for (i=0;i<3;i++) if (buf[i] ~ /# *allow-nginx[:]/) allow=1
+                if (!allow) printf "%s:%d: %s\n", file, NR, line
+              }
+              buf[2]=buf[1]; buf[1]=buf[0]; buf[0]=line
+            }
+          ' "$f" >> "$tmp_r1"
+        done
+        if [ -s "$tmp_r1" ]; then
+          while IFS= read -r violation; do
+            err "Rule 1 (FROM nginx without '# allow-nginx:' pragma): $violation"
+          done < "$tmp_r1"
+        fi
+        rm -f "$tmp_r1"
+
+        # -------------------------------------------------------------------
+        # Rule 2: no `nginx.ingress.kubernetes.io/` annotations outside docs/
+        # -------------------------------------------------------------------
+        note "Rule 2: scanning for nginx.ingress.kubernetes.io/ annotations"
+        mapfile -t r2_hits < <(
+          eval "find . \\( $PRUNE_DIRS \\) -prune -o -type f -print" \
+            | sed 's|^\./||' \
+            | while read -r p; do
+                [ -f "$p" ] || continue
+                is_doc_exempt "$p" && continue
+                if grep -Fn 'nginx.ingress.kubernetes.io/' "$p" >/dev/null 2>&1; then
+                  grep -Fn 'nginx.ingress.kubernetes.io/' "$p" | sed "s|^|$p:|"
+                fi
+              done
+        )
+        for hit in "${r2_hits[@]}"; do
+          [ -z "$hit" ] && continue
+          err "Rule 2 (nginx.ingress.kubernetes.io/ annotation outside docs/): $hit"
+        done
+
+        # -------------------------------------------------------------------
+        # Rule 3: no `ingress-nginx` Helm dependency
+        # -------------------------------------------------------------------
+        note "Rule 3: scanning Chart.yaml files for ingress-nginx dependency"
+        mapfile -t charts < <(
+          eval "find . \\( $PRUNE_DIRS \\) -prune -o -type f -print" \
+            | sed 's|^\./||' \
+            | grep -E '(^|/)Chart\.ya?ml$' || true
+        )
+        for c in "${charts[@]}"; do
+          [ -f "$c" ] || continue
+          is_extra_exempt "$c" && continue
+          # Match either `name: ingress-nginx` or a dependency block referencing ingress-nginx repo
+          if awk '
+            /^dependencies:/ { in_deps=1; next }
+            in_deps && /^[^[:space:]-]/ { in_deps=0 }
+            in_deps && /(name:[[:space:]]*["'"'"']?ingress-nginx|repository:.*ingress-nginx)/ { print NR": "$0; found=1 }
+            END { exit(found?0:1) }
+          ' "$c"; then
+            err "Rule 3 (Chart.yaml declares ingress-nginx dependency): $c"
+          fi
+        done
+
+        # -------------------------------------------------------------------
+        # Rule 4: no hardcoded `kubernetes.io/ingress.class: nginx`
+        # -------------------------------------------------------------------
+        note "Rule 4: scanning for kubernetes.io/ingress.class: nginx"
+        mapfile -t r4_hits < <(
+          eval "find . \\( $PRUNE_DIRS \\) -prune -o -type f -print" \
+            | sed 's|^\./||' \
+            | while read -r p; do
+                [ -f "$p" ] || continue
+                is_doc_exempt "$p" && continue
+                # Strictly match the annotation key with nginx value (not a comment mentioning it).
+                if grep -Pn '^\s*["'\'']?kubernetes\.io/ingress\.class["'\'']?\s*:\s*["'\'']?nginx["'\'']?\s*$' "$p" >/dev/null 2>&1; then
+                  grep -Pn '^\s*["'\'']?kubernetes\.io/ingress\.class["'\'']?\s*:\s*["'\'']?nginx["'\'']?\s*$' "$p" | sed "s|^|$p:|"
+                fi
+              done
+        )
+        for hit in "${r4_hits[@]}"; do
+          [ -z "$hit" ] && continue
+          err "Rule 4 (hardcoded kubernetes.io/ingress.class: nginx outside docs/): $hit"
+        done
+
+        # -------------------------------------------------------------------
+        if [ "$fail" -ne 0 ]; then
+          printf '%s\n' "$sep"
+          printf '[guard] FAIL — see violations above. See rune-docs ADR 0008 for policy.\n' >&2
+          exit 1
+        fi
+
+        note "PASS — no forbidden nginx / ingress-nginx patterns detected"

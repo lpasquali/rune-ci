@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+name: nginx-ingress-guard
+
+on:
+  workflow_call:
+    inputs:
+      scan-path:
+        description: "Root path to scan (default: repository root)."
+        type: string
+        required: false
+        default: "."
+      extra-exempt-paths:
+        description: >-
+          Newline-separated path prefixes added to the built-in rule 2/4
+          exemption list.
+        type: string
+        required: false
+        default: ""
+      extra-exempt-from-rule1:
+        description: >-
+          Newline-separated file paths whose `FROM nginx` lines are
+          exempt from rule 1 without an inline pragma.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: RuneGate/Infra/NginxIngressGuard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: lpasquali/rune-ci/actions/nginx-ingress-guard@main
+        with:
+          scan-path: ${{ inputs.scan-path }}
+          extra-exempt-paths: ${{ inputs.extra-exempt-paths }}
+          extra-exempt-from-rule1: ${{ inputs.extra-exempt-from-rule1 }}
