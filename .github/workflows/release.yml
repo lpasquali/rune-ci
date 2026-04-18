@@ -77,14 +77,14 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: lpasquali/rune-ci/actions/docker-setup@main
+      - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         id: docker
         with:
           registry-owner: ${{ inputs.registry-owner }}
           image-name: ${{ inputs.image-name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           platform: linux/amd64
-      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: .
           file: ${{ inputs.dockerfile }}
@@ -103,14 +103,14 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: lpasquali/rune-ci/actions/docker-setup@main
+      - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         id: docker
         with:
           registry-owner: ${{ inputs.registry-owner }}
           image-name: ${{ inputs.image-name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           platform: linux/arm64
-      - uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           context: .
           file: ${{ inputs.dockerfile }}
@@ -176,7 +176,7 @@ jobs:
 
       - name: Attest build provenance — SLSA L3
         if: inputs.slsa-attestation && inputs.build-container
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-name: ghcr.io/${{ inputs.registry-owner }}/${{ inputs.image-name }}
           subject-digest: ${{ steps.manifest.outputs.digest }}

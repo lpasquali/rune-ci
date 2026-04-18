@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: lpasquali/rune-ci/actions/gitleaks-scan@main
+      - uses: lpasquali/rune-ci/actions/gitleaks-scan@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         with:
           gitleaks-version: ${{ inputs.gitleaks-version }}
           event-name: ${{ github.event_name }}
@@ -59,12 +59,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: lpasquali/rune-ci/actions/sbom-scan@main
+      - uses: lpasquali/rune-ci/actions/sbom-scan@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         with:
           image: ${{ inputs.image }}
           cvss-threshold: ${{ inputs.cvss-threshold }}
           vex-file: ${{ inputs.vex-file }}
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: sbom-security-outputs
