@@ -55,6 +55,7 @@ All consumer repos pin to a **tagged release** of `rune-ci` (e.g., `@v0.1.0`). B
 | `shell-quality.yml` | shellcheck + yamllint | rune-airgapped |
 | `codeql-callable.yml` | CodeQL via `workflow_call` (`language`: python or go) | Optional thin callers |
 | `codeql.yml` | Standalone **Code Scanning (CodeQL)** for this repository (Python; same layout as `rune`) | `rune-ci` only |
+| `nginx-ingress-guard.yml` | Regression lint for [ADR 0008](https://github.com/lpasquali/rune-docs/blob/main/docs/architecture/adrs/0008-single-container-http-tool-and-ingress-agnosticism.md): blocks `FROM nginx`, `nginx.ingress.kubernetes.io/*` annotations, `ingress-nginx` chart deps, and hardcoded `kubernetes.io/ingress.class: nginx`. See [`actions/nginx-ingress-guard/README.md`](actions/nginx-ingress-guard/README.md). | All repos (follow-up wiring) |
 
 Implementation for the split lives in commit `45b2db6` (retro process tracking: **#21**).
 
