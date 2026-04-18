@@ -70,9 +70,25 @@ jobs:
         run: pytest tests/ -v --tb=short
       - name: Run workflow structure tests
         run: ./tests/test_workflow_structure.sh
+      - name: Run nginx-ingress-guard unit tests
+        run: bash tests/nginx-ingress-guard/run.sh
+
+  guard:
+    # Dogfood the nginx-ingress-guard action on this repo itself.
+    # The guard's own fixtures and test assertions contain the forbidden
+    # patterns on purpose, so those paths are exempted.
+    name: RuneGate/Infra/NginxIngressGuard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: lpasquali/rune-ci/actions/nginx-ingress-guard@main
+        with:
+          extra-exempt-paths: |
+            actions/nginx-ingress-guard
+            tests/nginx-ingress-guard
 
   compliance:
-    needs: [lint-workflows, lint-yaml, security-secrets, integration-tests]
+    needs: [lint-workflows, lint-yaml, security-secrets, integration-tests, guard]
     if: always()
     permissions:
       contents: read
