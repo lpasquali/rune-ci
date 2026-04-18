@@ -38,7 +38,7 @@ steps:
 
 ## Version Pinning
 
-All consumer repos pin to a **tagged release** of `rune-ci` (e.g., `@v0.1.0`). Breaking changes follow semver and are documented in release notes.
+All consumer repos pin to a **tagged release** of `rune-ci` (e.g., `@v0.1.0`). Breaking changes follow [Semantic Versioning 2.0.0](https://semver.org/) and are documented in release notes.
 
 ## Supported Workflows
 
@@ -58,6 +58,45 @@ All consumer repos pin to a **tagged release** of `rune-ci` (e.g., `@v0.1.0`). B
 | `nginx-ingress-guard.yml` | Regression lint for [ADR 0008](https://github.com/lpasquali/rune-docs/blob/main/docs/architecture/adrs/0008-single-container-http-tool-and-ingress-agnosticism.md): blocks `FROM nginx`, `nginx.ingress.kubernetes.io/*` annotations, `ingress-nginx` chart deps, and hardcoded `kubernetes.io/ingress.class: nginx`. See [`actions/nginx-ingress-guard/README.md`](actions/nginx-ingress-guard/README.md). | All repos (follow-up wiring) |
 
 Implementation for the split lives in commit `45b2db6` (retro process tracking: **#21**).
+
+## Tools & standards referenced
+
+Official documentation for the tools and standards invoked by the workflows above. Same URLs as the rune-docs [External Links Catalog](https://github.com/lpasquali/rune-docs/blob/main/docs/reference/EXTERNAL_LINKS.md).
+
+**Security & compliance**
+
+- [gitleaks](https://github.com/gitleaks/gitleaks) — secret scanning
+- [Syft](https://github.com/anchore/syft) — SBOM generation
+- [Grype](https://github.com/anchore/grype) — CVE scan
+- [Trivy](https://trivy.dev/) — container + config scan
+- [Bandit](https://bandit.readthedocs.io/) — Python SAST
+- [gosec](https://github.com/securego/gosec) — Go SAST
+- [CodeQL](https://codeql.github.com/docs/) — static analysis
+- [pip-licenses](https://pypi.org/project/pip-licenses/) — Python license check
+- [go-licenses](https://github.com/google/go-licenses) — Go license check
+
+**Language tooling**
+
+- [ruff](https://docs.astral.sh/ruff/) — Python linter
+- [mypy](https://mypy.readthedocs.io/) — Python type checker
+- [pytest](https://docs.pytest.org/) — Python test runner
+- [gofmt](https://pkg.go.dev/cmd/gofmt) — Go formatter
+- [go vet](https://pkg.go.dev/cmd/vet) — Go correctness checks
+
+**Docs / config / shell**
+
+- [MkDocs](https://www.mkdocs.org/) — docs site builder
+- [PyMarkdown](https://github.com/jackdewinter/pymarkdown) — markdown linter
+- [actionlint](https://github.com/rhysd/actionlint) — GitHub Actions YAML linter
+- [yamllint](https://yamllint.readthedocs.io/) — YAML linter
+- [shellcheck](https://www.shellcheck.net/) — shell linter
+- [Helm](https://helm.sh/docs/) — K8s package manager
+
+**Compliance standards**
+
+- [IEC 62443-4-1](https://webstore.iec.ch/publication/33615) / [ISA overview](https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards) — secure product development lifecycle
+- [SLSA v1.0](https://slsa.dev/spec/v1.0/) — Supply-chain Levels for Software Artifacts
+- [Semantic Versioning 2.0.0](https://semver.org/) — release versioning
 
 ## License
 
