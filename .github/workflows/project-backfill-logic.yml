@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Backfill open issues and PRs to project
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        uses: actions/github-script@576fcffb8fc295322d7d3ef8348a3e6045a1a7be # v9.0.0.0.0
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |

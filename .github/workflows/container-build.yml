@@ -43,7 +43,7 @@ jobs:
     name: Build image (amd64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
       - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         id: docker
         with:
@@ -51,7 +51,7 @@ jobs:
           image-name: ${{ inputs.image-name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           platform: linux/amd64
-      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      - uses: docker/build-push-action@7e8517dea467da2c48fdd7d440c8d12f200edccd # v7.1.0.1.0
         with:
           context: .
           file: ${{ inputs.dockerfile }}
@@ -65,7 +65,7 @@ jobs:
     name: Build image (arm64)
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
       - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         id: docker
         with:
@@ -73,7 +73,7 @@ jobs:
           image-name: ${{ inputs.image-name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           platform: linux/arm64
-      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      - uses: docker/build-push-action@7e8517dea467da2c48fdd7d440c8d12f200edccd # v7.1.0.1.0
         with:
           context: .
           file: ${{ inputs.dockerfile }}

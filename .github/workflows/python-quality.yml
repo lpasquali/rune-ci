@@ -58,7 +58,7 @@ jobs:
     outputs:
       relevant: ${{ steps.diff.outputs.relevant }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
         with:
           fetch-depth: 0
       - name: Compute changed paths
@@ -89,7 +89,7 @@ jobs:
     if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ inputs.python-version }}
@@ -117,7 +117,7 @@ jobs:
     if: needs.changes.outputs.relevant == 'true' && inputs.lint-enabled
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ inputs.python-version }}
@@ -139,7 +139,7 @@ jobs:
     if: needs.changes.outputs.relevant == 'true' && inputs.sast-enabled
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ inputs.python-version }}
@@ -154,7 +154,7 @@ jobs:
     if: needs.changes.outputs.relevant == 'true' && inputs.license-check-enabled
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ inputs.python-version }}
@@ -163,7 +163,7 @@ jobs:
           language: python
           python-version: ${{ inputs.python-version }}
           allowed-exceptions: ${{ inputs.allowed-license-exceptions }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@902ef112faccdb6f3c0c33755739a8492bd48771 # v7.0.1.0.1
         if: always()
         with:
           name: license-reports
