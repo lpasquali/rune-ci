@@ -22,10 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@9dd920159e2dfd9d681ce47c907ae8fc2a872de2 # v3
         with:
           languages: ${{ inputs.language }}
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@9dd920159e2dfd9d681ce47c907ae8fc2a872de2 # v3
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@9dd920159e2dfd9d681ce47c907ae8fc2a872de2 # v3
