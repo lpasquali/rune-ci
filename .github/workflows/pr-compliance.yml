@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR body structure
-        uses: lpasquali/rune-ci/actions/pr-body-compliance@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
+        uses: lpasquali/rune-ci/actions/pr-body-compliance@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
         with:
           profile: ${{ inputs.pr-body-profile }}
 
@@ -52,7 +52,7 @@ jobs:
 
       - name: Verify upstream quality jobs
         # Caller repo checkout does not contain ./actions — pin to this repo (same tree as reusable workflows).
-        uses: lpasquali/rune-ci/actions/merge-gate-verify@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
+        uses: lpasquali/rune-ci/actions/merge-gate-verify@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
         with:
           needs-json: ${{ inputs.needs-json }}
           merge-gate-excludes: ${{ inputs.merge-gate-excludes }}
@@ -66,7 +66,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Approve PR via Automated Quality Gates
-        uses: lpasquali/rune-ci/actions/ml4-auto-approve@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
+        uses: lpasquali/rune-ci/actions/ml4-auto-approve@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
 
   merge-gate:
     name: Merge Gate
