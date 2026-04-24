@@ -18,7 +18,7 @@ jobs:
     name: Package charts and create GitHub Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 

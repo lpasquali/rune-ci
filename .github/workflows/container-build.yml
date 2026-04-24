@@ -43,7 +43,7 @@ jobs:
     name: Build image (amd64)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         id: docker
         with:
@@ -65,7 +65,7 @@ jobs:
     name: Build image (arm64)
     runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@21ced69c8819ebffc044fbea9738e35c9d5a453d # v6.0.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
         id: docker
         with:
