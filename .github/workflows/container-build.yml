@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
+      - uses: lpasquali/rune-ci/actions/docker-setup@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
         id: docker
         with:
           registry-owner: ${{ inputs.registry-owner }}
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: lpasquali/rune-ci/actions/docker-setup@144ef855dbf0420e5d9a8de2c8d8f89c2e789265
+      - uses: lpasquali/rune-ci/actions/docker-setup@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
         id: docker
         with:
           registry-owner: ${{ inputs.registry-owner }}
