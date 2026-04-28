@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 # Load merge_gate module from scripts/ (not on sys.path by default)
-_SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
+_SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent / "scripts"
 _MERGE_GATE = _SCRIPTS_DIR / "merge_gate.py"
 
 spec = importlib.util.spec_from_file_location("merge_gate", _MERGE_GATE)
