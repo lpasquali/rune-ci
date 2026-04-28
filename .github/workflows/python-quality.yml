@@ -163,7 +163,7 @@ jobs:
           language: python
           python-version: ${{ inputs.python-version }}
           allowed-exceptions: ${{ inputs.allowed-license-exceptions }}
-      - uses: actions/upload-artifact@902ef112faccdb6f3c0c33755739a8492bd48771 # v7.0.1.0.1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
         with:
           name: license-reports
