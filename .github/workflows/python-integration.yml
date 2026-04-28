@@ -88,7 +88,7 @@ jobs:
           . .venv/bin/activate
           pip install --upgrade pip
           pip install --prefer-binary -r requirements.txt pytest respx
-      - uses: actions/cache@d076a547db6a6880a10db0983a28d0e976fb78ab # v5.0.5
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
         id: cache-ollama-models
         with:
           path: /tmp/ollama-models
