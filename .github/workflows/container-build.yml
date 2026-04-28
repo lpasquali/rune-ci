@@ -51,7 +51,7 @@ jobs:
           image-name: ${{ inputs.image-name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           platform: linux/amd64
-      - uses: docker/build-push-action@7e8517dea467da2c48fdd7d440c8d12f200edccd # v7.1.0.1.0
+      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: .
           file: ${{ inputs.dockerfile }}
@@ -73,7 +73,7 @@ jobs:
           image-name: ${{ inputs.image-name }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           platform: linux/arm64
-      - uses: docker/build-push-action@7e8517dea467da2c48fdd7d440c8d12f200edccd # v7.1.0.1.0
+      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7
         with:
           context: .
           file: ${{ inputs.dockerfile }}
