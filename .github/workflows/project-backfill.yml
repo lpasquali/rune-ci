@@ -11,6 +11,6 @@ permissions:
 
 jobs:
   backfill:
-    uses: lpasquali/rune-ci/.github/workflows/project-backfill-logic.yml@main
+    uses: lpasquali/rune-ci/.github/workflows/project-backfill-logic.yml@23b84477724ddf4c91fbbe1535657639f921d18c
     secrets:
       PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
