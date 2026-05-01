@@ -1,0 +1,185 @@
+﻿2026-05-01T18:55:47.1573072Z Current runner version: '2.334.0'
+2026-05-01T18:55:47.1595853Z ##[group]Runner Image Provisioner
+2026-05-01T18:55:47.1596750Z Hosted Compute Agent
+2026-05-01T18:55:47.1597320Z Version: 20260213.493
+2026-05-01T18:55:47.1597901Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-05-01T18:55:47.1598704Z Build Date: 2026-02-13T00:28:41Z
+2026-05-01T18:55:47.1599609Z Worker ID: {69a0212e-2fa7-40dd-82fb-3834755b0612}
+2026-05-01T18:55:47.1600310Z Azure Region: westus
+2026-05-01T18:55:47.1600924Z ##[endgroup]
+2026-05-01T18:55:47.1602319Z ##[group]Operating System
+2026-05-01T18:55:47.1602951Z Ubuntu
+2026-05-01T18:55:47.1603466Z 24.04.4
+2026-05-01T18:55:47.1603990Z LTS
+2026-05-01T18:55:47.1604429Z ##[endgroup]
+2026-05-01T18:55:47.1604978Z ##[group]Runner Image
+2026-05-01T18:55:47.1605521Z Image: ubuntu-24.04
+2026-05-01T18:55:47.1606051Z Version: 20260413.86.1
+2026-05-01T18:55:47.1607335Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+2026-05-01T18:55:47.1608771Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+2026-05-01T18:55:47.1610155Z ##[endgroup]
+2026-05-01T18:55:47.1611278Z ##[group]GITHUB_TOKEN Permissions
+2026-05-01T18:55:47.1613102Z Contents: read
+2026-05-01T18:55:47.1613962Z Metadata: read
+2026-05-01T18:55:47.1614455Z PullRequests: write
+2026-05-01T18:55:47.1614986Z ##[endgroup]
+2026-05-01T18:55:47.1616984Z Secret source: Actions
+2026-05-01T18:55:47.1617696Z Prepare workflow directory
+2026-05-01T18:55:47.2023438Z Prepare all required actions
+2026-05-01T18:55:47.2078889Z Getting action download info
+2026-05-01T18:55:47.6325608Z Download action repository 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd' (SHA:de0fac2e4500dabe0009e67214ff5f5447ce83dd)
+2026-05-01T18:55:47.8368287Z Complete job name: RuneGate/Lint/YAMLLint
+2026-05-01T18:55:47.9051156Z ##[group]Run actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+2026-05-01T18:55:47.9052194Z with:
+2026-05-01T18:55:47.9052638Z   repository: lpasquali/rune-ci
+2026-05-01T18:55:47.9053318Z   token: ***
+2026-05-01T18:55:47.9053698Z   ssh-strict: true
+2026-05-01T18:55:47.9054089Z   ssh-user: git
+2026-05-01T18:55:47.9054487Z   persist-credentials: true
+2026-05-01T18:55:47.9054918Z   clean: true
+2026-05-01T18:55:47.9055314Z   sparse-checkout-cone-mode: true
+2026-05-01T18:55:47.9055786Z   fetch-depth: 1
+2026-05-01T18:55:47.9056172Z   fetch-tags: false
+2026-05-01T18:55:47.9056564Z   show-progress: true
+2026-05-01T18:55:47.9057113Z   lfs: false
+2026-05-01T18:55:47.9057595Z   submodules: false
+2026-05-01T18:55:47.9058207Z   set-safe-directory: true
+2026-05-01T18:55:47.9058903Z env:
+2026-05-01T18:55:47.9059535Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-05-01T18:55:47.9060045Z ##[endgroup]
+2026-05-01T18:55:47.9999271Z Syncing repository: lpasquali/rune-ci
+2026-05-01T18:55:48.0001092Z ##[group]Getting Git version info
+2026-05-01T18:55:48.0001790Z Working directory is '/home/runner/work/rune-ci/rune-ci'
+2026-05-01T18:55:48.0002703Z [command]/usr/bin/git version
+2026-05-01T18:55:48.0033564Z git version 2.53.0
+2026-05-01T18:55:48.0057161Z ##[endgroup]
+2026-05-01T18:55:48.0073203Z Temporarily overriding HOME='/home/runner/work/_temp/9bd720d1-8566-4ebb-9395-1d4eb295ffa5' before making global git config changes
+2026-05-01T18:55:48.0075554Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-01T18:55:48.0079789Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/rune-ci/rune-ci
+2026-05-01T18:55:48.0113284Z Deleting the contents of '/home/runner/work/rune-ci/rune-ci'
+2026-05-01T18:55:48.0117629Z ##[group]Initializing the repository
+2026-05-01T18:55:48.0122761Z [command]/usr/bin/git init /home/runner/work/rune-ci/rune-ci
+2026-05-01T18:55:48.0211880Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-05-01T18:55:48.0213811Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-05-01T18:55:48.0214810Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-05-01T18:55:48.0215771Z hint: call:
+2026-05-01T18:55:48.0216129Z hint:
+2026-05-01T18:55:48.0216585Z hint: 	git config --global init.defaultBranch <name>
+2026-05-01T18:55:48.0217162Z hint:
+2026-05-01T18:55:48.0217694Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-05-01T18:55:48.0218575Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-05-01T18:55:48.0219606Z hint:
+2026-05-01T18:55:48.0219990Z hint: 	git branch -m <name>
+2026-05-01T18:55:48.0220433Z hint:
+2026-05-01T18:55:48.0221020Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-05-01T18:55:48.0221959Z Initialized empty Git repository in /home/runner/work/rune-ci/rune-ci/.git/
+2026-05-01T18:55:48.0229176Z [command]/usr/bin/git remote add origin https://github.com/lpasquali/rune-ci
+2026-05-01T18:55:48.0259319Z ##[endgroup]
+2026-05-01T18:55:48.0260078Z ##[group]Disabling automatic garbage collection
+2026-05-01T18:55:48.0262724Z [command]/usr/bin/git config --local gc.auto 0
+2026-05-01T18:55:48.0289999Z ##[endgroup]
+2026-05-01T18:55:48.0290753Z ##[group]Setting up auth
+2026-05-01T18:55:48.0291535Z Removing SSH command configuration
+2026-05-01T18:55:48.0296909Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-01T18:55:48.0327692Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-01T18:55:48.0612610Z Removing HTTP extra header
+2026-05-01T18:55:48.0618351Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-01T18:55:48.0650154Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-01T18:55:48.0855325Z Removing includeIf entries pointing to credentials config files
+2026-05-01T18:55:48.0860840Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-01T18:55:48.0892062Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-01T18:55:48.1107711Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-05-01T18:55:48.1144273Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/rune-ci/rune-ci/.git.path /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:48.1175204Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/rune-ci/rune-ci/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:48.1205234Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:48.1234718Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:48.1260954Z ##[endgroup]
+2026-05-01T18:55:48.1261711Z ##[group]Fetching the repository
+2026-05-01T18:55:48.1268647Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +767176b6c2bdcb9cbfb0004c57286f3f467fc555:refs/remotes/pull/57/merge
+2026-05-01T18:55:48.8631912Z From https://github.com/lpasquali/rune-ci
+2026-05-01T18:55:48.8633508Z  * [new ref]         767176b6c2bdcb9cbfb0004c57286f3f467fc555 -> pull/57/merge
+2026-05-01T18:55:48.8664374Z ##[endgroup]
+2026-05-01T18:55:48.8665762Z ##[group]Determining the checkout info
+2026-05-01T18:55:48.8667452Z ##[endgroup]
+2026-05-01T18:55:48.8672702Z [command]/usr/bin/git sparse-checkout disable
+2026-05-01T18:55:48.8713187Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-05-01T18:55:48.8744157Z ##[group]Checking out the ref
+2026-05-01T18:55:48.8748321Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/57/merge
+2026-05-01T18:55:48.8817932Z Note: switching to 'refs/remotes/pull/57/merge'.
+2026-05-01T18:55:48.8818785Z 
+2026-05-01T18:55:48.8819882Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-05-01T18:55:48.8822057Z changes and commit them, and you can discard any commits you make in this
+2026-05-01T18:55:48.8823947Z state without impacting any branches by switching back to a branch.
+2026-05-01T18:55:48.8824758Z 
+2026-05-01T18:55:48.8825230Z If you want to create a new branch to retain commits you create, you may
+2026-05-01T18:55:48.8826906Z do so (now or later) by using -c with the switch command. Example:
+2026-05-01T18:55:48.8827601Z 
+2026-05-01T18:55:48.8827841Z   git switch -c <new-branch-name>
+2026-05-01T18:55:48.8828271Z 
+2026-05-01T18:55:48.8828497Z Or undo this operation with:
+2026-05-01T18:55:48.8828874Z 
+2026-05-01T18:55:48.8829299Z   git switch -
+2026-05-01T18:55:48.8829607Z 
+2026-05-01T18:55:48.8830116Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-05-01T18:55:48.8831228Z 
+2026-05-01T18:55:48.8832166Z HEAD is now at 767176b Merge 08136a358b6b5c6f94489c951b4ad197277af97f into d1d2d2863dac135812bf98b89ae6f9bef8c33e63
+2026-05-01T18:55:48.8834873Z ##[endgroup]
+2026-05-01T18:55:48.8861710Z [command]/usr/bin/git log -1 --format=%H
+2026-05-01T18:55:48.8884503Z 767176b6c2bdcb9cbfb0004c57286f3f467fc555
+2026-05-01T18:55:48.9097209Z ##[group]Run pip install yamllint
+2026-05-01T18:55:48.9098061Z [36;1mpip install yamllint[0m
+2026-05-01T18:55:48.9098814Z [36;1myamllint .github/workflows/ actions/[0m
+2026-05-01T18:55:48.9124306Z shell: /usr/bin/bash -e {0}
+2026-05-01T18:55:48.9124940Z env:
+2026-05-01T18:55:48.9125404Z   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+2026-05-01T18:55:48.9126205Z ##[endgroup]
+2026-05-01T18:55:49.3390868Z Defaulting to user installation because normal site-packages is not writeable
+2026-05-01T18:55:49.6591834Z Collecting yamllint
+2026-05-01T18:55:49.6920153Z   Downloading yamllint-1.38.0-py3-none-any.whl.metadata (4.2 kB)
+2026-05-01T18:55:49.7302838Z Collecting pathspec>=1.0.0 (from yamllint)
+2026-05-01T18:55:49.7334317Z   Downloading pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+2026-05-01T18:55:49.7380446Z Requirement already satisfied: pyyaml in /usr/lib/python3/dist-packages (from yamllint) (6.0.1)
+2026-05-01T18:55:49.7445127Z Downloading yamllint-1.38.0-py3-none-any.whl (68 kB)
+2026-05-01T18:55:49.7537838Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 68.9/68.9 kB 8.3 MB/s eta 0:00:00
+2026-05-01T18:55:49.7566257Z Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+2026-05-01T18:55:49.7636915Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 57.3/57.3 kB 8.8 MB/s eta 0:00:00
+2026-05-01T18:55:50.0145880Z Installing collected packages: pathspec, yamllint
+2026-05-01T18:55:50.0776609Z Successfully installed pathspec-1.1.1 yamllint-1.38.0
+2026-05-01T18:55:50.4881264Z ##[group].github/workflows/dependabot-automerge.yml
+2026-05-01T18:55:50.4906234Z ##[error]23:46 [new-line-at-end-of-file] no new line character at the end of file
+2026-05-01T18:55:50.4917302Z ##[endgroup]
+2026-05-01T18:55:50.4917556Z 
+2026-05-01T18:55:50.4993169Z ##[error]Process completed with exit code 1.
+2026-05-01T18:55:50.5103156Z Post job cleanup.
+2026-05-01T18:55:50.5882778Z [command]/usr/bin/git version
+2026-05-01T18:55:50.5918477Z git version 2.53.0
+2026-05-01T18:55:50.5958912Z Temporarily overriding HOME='/home/runner/work/_temp/d97fd1fe-72f1-4250-869a-28f519712356' before making global git config changes
+2026-05-01T18:55:50.5960639Z Adding repository directory to the temporary git global config as a safe directory
+2026-05-01T18:55:50.5964971Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/rune-ci/rune-ci
+2026-05-01T18:55:50.5994095Z Removing SSH command configuration
+2026-05-01T18:55:50.6000302Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-05-01T18:55:50.6035238Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-05-01T18:55:50.6249928Z Removing HTTP extra header
+2026-05-01T18:55:50.6254401Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-05-01T18:55:50.6286798Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-05-01T18:55:50.6495740Z Removing includeIf entries pointing to credentials config files
+2026-05-01T18:55:50.6501409Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-05-01T18:55:50.6553943Z includeif.gitdir:/home/runner/work/rune-ci/rune-ci/.git.path
+2026-05-01T18:55:50.6555099Z includeif.gitdir:/home/runner/work/rune-ci/rune-ci/.git/worktrees/*.path
+2026-05-01T18:55:50.6555930Z includeif.gitdir:/github/workspace/.git.path
+2026-05-01T18:55:50.6556609Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-01T18:55:50.6563651Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/rune-ci/rune-ci/.git.path
+2026-05-01T18:55:50.6584662Z /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6595428Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/rune-ci/rune-ci/.git.path /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6628601Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/rune-ci/rune-ci/.git/worktrees/*.path
+2026-05-01T18:55:50.6649715Z /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6658478Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/rune-ci/rune-ci/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6687272Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-05-01T18:55:50.6707260Z /github/runner_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6715971Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6745625Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-05-01T18:55:50.6765195Z /github/runner_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6774115Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config
+2026-05-01T18:55:50.6803551Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-05-01T18:55:50.7009515Z Removing credentials config '/home/runner/work/_temp/git-credentials-25034684-8bc0-4240-bf21-546f97f6f4c8.config'
+2026-05-01T18:55:50.7147800Z Cleaning up orphan processes
