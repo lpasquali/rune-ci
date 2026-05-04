@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: lpasquali/rune-ci/actions/gitleaks-scan@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
+      - uses: lpasquali/rune-ci/actions/gitleaks-scan@72ffc70b5253c30afd47b06e81eff3f9b08c04c8
         with:
           gitleaks-version: ${{ inputs.gitleaks-version }}
           event-name: ${{ github.event_name }}
@@ -59,7 +59,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: lpasquali/rune-ci/actions/sbom-scan@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
+      - uses: lpasquali/rune-ci/actions/sbom-scan@72ffc70b5253c30afd47b06e81eff3f9b08c04c8
         with:
           image: ${{ inputs.image }}
           cvss-threshold: ${{ inputs.cvss-threshold }}

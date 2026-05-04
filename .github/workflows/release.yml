@@ -77,7 +77,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: lpasquali/rune-ci/actions/docker-setup@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
+      - uses: lpasquali/rune-ci/actions/docker-setup@72ffc70b5253c30afd47b06e81eff3f9b08c04c8
         id: docker
         with:
           registry-owner: ${{ inputs.registry-owner }}
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-      - uses: lpasquali/rune-ci/actions/docker-setup@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
+      - uses: lpasquali/rune-ci/actions/docker-setup@72ffc70b5253c30afd47b06e81eff3f9b08c04c8
         id: docker
         with:
           registry-owner: ${{ inputs.registry-owner }}
