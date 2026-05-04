@@ -14,6 +14,6 @@ permissions:
 
 jobs:
   sync:
-    uses: lpasquali/rune-ci/.github/workflows/project-sync-logic.yml@a0f2e64a22021e9c9359f3679a0957aafd200138
+    uses: lpasquali/rune-ci/.github/workflows/project-sync-logic.yml@bea065f37c1ec98613e8809c2b66c833674cf2fe
     secrets:
       PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
