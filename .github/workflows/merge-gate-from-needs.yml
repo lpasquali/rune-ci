@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify upstream job results
-        uses: lpasquali/rune-ci/actions/merge-gate-verify@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
+        uses: lpasquali/rune-ci/actions/merge-gate-verify@cfdb81c2d4f03bb82786729401fe7b8e833e4347
         with:
           needs-json: ${{ inputs.needs-json }}
           merge-gate-excludes: ${{ inputs.merge-gate-excludes }}
