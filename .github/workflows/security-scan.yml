@@ -59,7 +59,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: lpasquali/rune-ci/actions/sbom-scan@6830fbf5bf25bb58a794b5659e9e1f284dcc4ee9
+      - uses: lpasquali/rune-ci/actions/sbom-scan@cfdb81c2d4f03bb82786729401fe7b8e833e4347
         with:
           image: ${{ inputs.image }}
           cvss-threshold: ${{ inputs.cvss-threshold }}
